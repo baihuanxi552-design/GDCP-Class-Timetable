@@ -12,11 +12,35 @@
   for(const c of data.courses){if(typeof c.name!=='string'||!c.name.trim()||c.name.length>200||typeof c.teacher!=='string'||c.teacher.length>200||typeof c.position!=='string'||c.position.length>300||!Number.isInteger(c.day)||c.day<1||c.day>7||!Array.isArray(c.sections)||!c.sections.length||c.sections.length>12||c.sections.some((s,i)=>!Number.isInteger(s)||s<1||s>12||(i&&s!==c.sections[i-1]+1))||!Array.isArray(c.weeks)||!c.weeks.length||c.weeks.length>20||c.weeks.some(w=>!Number.isInteger(w)||w<1||w>20))throw Error('课程数据无效');clean.courses.push({name:c.name.trim(),teacher:c.teacher,position:c.position,day:c.day,sections:[...c.sections],weeks:[...new Set(c.weeks)].sort((a,b)=>a-b)})}
   return clean;
  }
+ function homeCourses(doc,table){
+  const selector=doc.querySelector('#week');if(selector&&selector.value!=='all')throw Error('请切换首页右上角教学周为“全部”，再导入');
+  const all=[];
+  for(const detail of table.querySelectorAll('.item-box')){
+   for(const heading of [...detail.children].filter(e=>e.tagName==='P')){
+    const info=heading.nextElementSibling,place=info?.nextElementSibling;
+    if(!info?.classList.contains('tch-name')||!place)throw Error('首页课程详情不完整');
+    const values=[...info.querySelectorAll('span')].map(s=>s.textContent.trim());
+    const range=values.find(s=>/^\d{1,2}[~～-]\d{1,2}节$/.test(s))?.match(/^(\d+)[~～-](\d+)节$/);
+    const where=[...place.children].filter(e=>e.tagName==='SPAN'),when=where[1]?.textContent.trim();
+    const wm=when?.match(/^第([\d,，\-]+)周[（(](全部|单|双|单周|双周)[）)]\s*星期([一二三四五六日天])/);
+    const day=heading.closest('td')?.cellIndex;
+    if(!range||!wm||day<1||day>7||('一二三四五六日'.indexOf(wm[3].replace('天','日'))+1)!==day)throw Error('无法识别首页节次、星期或周次');
+    const first=+range[1],last=+range[2],parity=wm[2].startsWith('单')?'单':wm[2].startsWith('双')?'双':'';
+    const ws=weeks(wm[1]).filter(w=>!parity||(parity==='单'?w%2===1:w%2===0));
+    const position=(where[0]?.textContent.trim()||'').replace(/^(.+?)-\1-/, '$1-');
+    all.push({name:heading.textContent.trim(),teacher:(values.find(s=>s.startsWith('教师：'))||'').replace(/^教师：/,''),position,day,sections:Array.from({length:last-first+1},(_,i)=>first+i),weeks:ws});
+   }
+  }
+  return all;
+ }
  function parse(doc){
   const table=doc.querySelector('#timetable');if(!table)throw Error('未找到个人课表，请先登录并打开“我的课表”的个人课表页面');
   const semester=doc.querySelector('#xnxq01id');if(semester&&semester.value!=='2026-2027-1')throw Error('请选择2026—2027第一学期');
   if(table.querySelector('tr')?.cells.length>10)throw Error('请使用个人课表，不能导入全校班级查询结果');
-  const all=[];let errors=0;
+  const home=!!table.querySelector('.item-box .tch-name');
+  const homeSemester=[...doc.querySelectorAll('select')].find(s=>/^\d{4}-\d{4}-\d$/.test(s.selectedOptions[0]?.textContent.trim()||''))?.selectedOptions[0]?.textContent.trim();
+  if(homeSemester&&homeSemester!=='2026-2027-1')throw Error('请选择2026—2027第一学期');
+  const all=home?homeCourses(doc,table):[];let errors=0;
   for(const block of table.querySelectorAll('.kbcontent')){
    const fonts=[...block.querySelectorAll('font')];const weekFonts=fonts.filter(f=>f.title?.includes('周次')&&/\[\d{1,2}-\d{1,2}节\]/.test(f.textContent));
    for(const wf of weekFonts){try{
@@ -35,5 +59,17 @@
   return validate({format:'gdcp-personal-timetable',version:1,semester:'2026-2027-1',courses:[...merged.values()]});
  }
  function find(doc){try{return parse(doc)}catch(original){for(const frame of doc.querySelectorAll('iframe,frame')){try{if(frame.contentDocument)return find(frame.contentDocument)}catch{}}throw original}}
- root.GDCPParser={parse,find,validate,weeks};
+ function homeDocument(doc){if(doc.querySelector('#week'))return doc;for(const frame of doc.querySelectorAll('iframe,frame')){try{const found=frame.contentDocument&&homeDocument(frame.contentDocument);if(found)return found}catch{}}return null}
+ async function collect(doc){
+  const home=homeDocument(doc);if(!home)return find(doc);
+  if(home.querySelector('#week').value==='all')return parse(home);
+  const term=[...home.querySelectorAll('select')].map(s=>s.selectedOptions[0]?.textContent.trim()).find(s=>/^\d{4}-\d{4}-\d$/.test(s||''));
+  if(term!=='2026-2027-1')throw Error('请选择2026—2027第一学期');
+  const mode=home.querySelector('[name="kbjcmsid"].layui-this')?.getAttribute('data-value');if(!mode)throw Error('未识别首页节次模式，请手动选择“全部”后重试');
+  const url=new URL('/jsxsd/framework/mainV_index_loadkb.htmlx',home.location.href);url.search=new URLSearchParams({rq:'all',sjmsValue:mode,xnxqid:term,xswk:'false'}).toString();
+  const response=await home.defaultView.fetch(url.href,{credentials:'same-origin'});if(!response.ok)throw Error('全部周课表读取失败');
+  const bytes=await response.arrayBuffer(),text=new TextDecoder(/gb/i.test(response.headers.get('content-type')||'')?'gb18030':'utf-8').decode(bytes);
+  return parse(new DOMParser().parseFromString(text.replace(/\s(?:src|srcset|href)\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi,''),'text/html'));
+ }
+ root.GDCPParser={parse,find,collect,validate,weeks};
 })(globalThis);
