@@ -1,0 +1,11 @@
+**/.gradle/
+**/.kotlin/
+**/build/
+**/local.properties
+**/*.jks
+**/*.keystore
+**/keystore.properties
+**/signing.properties
+.DS_Store
+Thumbs.db
+# The published APK in downloads/ is intentionally tracked.

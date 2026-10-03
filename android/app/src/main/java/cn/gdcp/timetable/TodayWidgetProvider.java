@@ -1,0 +1,1 @@
+package cn.gdcp.timetable; public class TodayWidgetProvider extends BaseWidgetProvider {}

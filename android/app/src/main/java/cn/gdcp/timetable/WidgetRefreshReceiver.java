@@ -1,0 +1,1 @@
+package cn.gdcp.timetable;import android.content.*;public class WidgetRefreshReceiver extends BroadcastReceiver { @Override public void onReceive(Context c,Intent i){BaseWidgetProvider.updateAll(c);} }

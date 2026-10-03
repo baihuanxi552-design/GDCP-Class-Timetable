@@ -1,0 +1,45 @@
+name: Build empty web and Android
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools platforms;android-35 build-tools;35.0.0
+          log-accepted-android-sdk-licenses: false
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Verify empty packaged data
+        run: |
+          node --check app.js
+          node --check sync.js
+          python - <<'PY'
+          import json
+          data=json.load(open('android/app/src/main/assets/school-data.json'))
+          assert not data['strings'] and not data['teacherProjects']
+          assert all(not c['courses'] for c in data['classes'])
+          PY
+      - name: Compile and check Android
+        working-directory: android
+        run: bash gradlew assembleDebug assembleRelease testDebugUnitTest lintRelease --no-daemon
+      - name: Package web
+        run: zip timetable-web-empty.zip index.html app.js sync.js school-data.js style.css sync.css icon.svg .nojekyll PROGRESSIVE-BLUR-LICENSE.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: timetable-empty-3.1.17
+          path: |
+            timetable-web-empty.zip
+            android/app/build/outputs/apk/debug/*.apk
+            android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error

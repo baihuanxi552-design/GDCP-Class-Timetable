@@ -1,0 +1,35 @@
+name: Remove previous timetable publication and history
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/privacy-cleanup.yml]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete archived old release and detach private history
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          current=$(gh api "repos/$GH_REPO/git/ref/heads/main" --jq .object.sha)
+          if [ "$current" != "$GITHUB_SHA" ]; then
+            echo 'Main changed; refusing to overwrite concurrent changes.'
+            exit 1
+          fi
+          if gh release view android-v3.1.16 >/dev/null 2>&1; then
+            digest=$(gh api "repos/$GH_REPO/releases/tags/android-v3.1.16" --jq '.assets[] | select(.name=="Class-Timetable-3.1.16.apk") | .digest')
+            test "$digest" = 'sha256:bfdfa1adf1b001fe07e4ac22705db23ca64b967775e2e5dd6f3fe8931067e873'
+            gh release delete android-v3.1.16 --yes --cleanup-tag
+          fi
+          parents=$(gh api "repos/$GH_REPO/git/commits/$current" --jq '.parents | length')
+          if [ "$parents" = 0 ]; then exit 0; fi
+          tree=$(gh api "repos/$GH_REPO/git/commits/$current" --jq .tree.sha)
+          root=$(gh api "repos/$GH_REPO/git/commits" -f message='Privacy cleanup: empty timetable clients, previous data backed up privately' -f tree="$tree" --jq .sha)
+          gh api --method PATCH "repos/$GH_REPO/git/refs/heads/main" -f sha="$root" -F force=true >/dev/null
+          echo "Clean root commit: $root"
