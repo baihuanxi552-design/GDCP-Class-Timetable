@@ -130,6 +130,14 @@ private fun weekRanges(weeks: IntArray): String { val ranges= mutableListOf<Stri
     val firstLogin=rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         if(PersonalImport.active(context)) {SchoolData.confirm(context,selectedClass,selectedCampus);configured=true;BaseWidgetProvider.updateAll(context)}
     }
+    var welcomeSeen by rememberSaveable { mutableStateOf(context.getSharedPreferences("school",0).getBoolean("welcomeAnimationSeenV1",false)) }
+    if(!welcomeSeen) {
+        FirstWelcome(onContinue={
+            context.getSharedPreferences("school",0).edit().putBoolean("welcomeAnimationSeenV1",true).apply()
+            welcomeSeen=true
+        })
+        return
+    }
     if(!configured) {
         val colors=MiuixTheme.colorScheme
         Column(Modifier.fillMaxSize().background(colors.background).verticalScroll(rememberScrollState()).safeDrawingPadding().padding(24.dp),verticalArrangement=Arrangement.spacedBy(20.dp)) {
@@ -777,7 +785,7 @@ private fun Modifier.blockMotionInput()=pointerInput(Unit) {
             Image(painterResource(R.drawable.ic_launcher),contentDescription="应用图标",modifier=Modifier.size(96.dp))
             MotionText("个人课表",fontSize=32.sp,fontWeight=FontWeight.Bold,modifier=Modifier.padding(top=22.dp))
             MotionText("每一周，都有清晰的安排",fontSize=15.sp,color=colors.onSurfaceVariantSummary,modifier=Modifier.padding(top=10.dp))
-            MotionText("版本 3.2.3 · Compose Miuix",fontSize=14.sp,color=colors.onSurfaceVariantSummary,modifier=Modifier.padding(top=18.dp))
+            MotionText("版本 3.2.4 · Compose Miuix",fontSize=14.sp,color=colors.onSurfaceVariantSummary,modifier=Modifier.padding(top=18.dp))
         } }
         item { MotionText("项目",fontSize=14.sp,color=colors.onSurfaceVariantSummary);Spacer(Modifier.height(10.dp));Card(insideMargin=PaddingValues(20.dp)) {
             MotionText("广交个人课表",fontSize=20.sp,fontWeight=FontWeight.SemiBold);Spacer(Modifier.height(14.dp));MotionText("你的课程与每周安排\n2026—2027 · 第一学期",fontSize=14.sp,lineHeight=23.sp);Spacer(Modifier.height(22.dp))
