@@ -222,11 +222,12 @@ private fun weekRanges(weeks: IntArray): String { val ranges= mutableListOf<Stri
             slideInHorizontally(tween(420,easing=FastOutSlowInEasing)) {direction*it} togetherWith
                 slideOutHorizontally(tween(420,easing=FastOutSlowInEasing)) {-direction*it}
         }) { visiblePage ->
-        val textDepth by transition.animateFloat(transitionSpec={tween(420,easing=FastOutSlowInEasing)},label="header-text-depth") {state -> if(state==EnterExitState.Visible) 0f else 1f}
-        var pageShift by remember {mutableFloatStateOf(0f)}
-        var pageCoordinates by remember {mutableStateOf<androidx.compose.ui.layout.LayoutCoordinates?>(null)}
-        CompositionLocalProvider(LocalTextMotion provides TextMotion(textDepth,textMidpoint,mainTransition.isRunning,pageShift,pageCoordinates,textOverlays)) {
-        Box(Modifier.fillMaxSize().onGloballyPositioned {pageCoordinates=it;pageShift=it.positionInRoot().x-backdropOrigin.x}.then(pageSwipe(visiblePage==page && !customMounted && !settingsMounted) {delta -> page=(page+delta).coerceIn(0,1)}).background(colors.background).then(if(visiblePage!=page || customMounted || settingsMounted) Modifier.clearAndSetSemantics {}.blockMotionInput() else Modifier)) {
+        val textDepth = transition.animateFloat(transitionSpec={tween(420,easing=FastOutSlowInEasing)},label="header-text-depth") {state -> if(state==EnterExitState.Visible) 0f else 1f}
+        val pageCoordinates=remember {PageCoordinates()}
+        val textBlurCache=remember(density) {TextBlurCache(with(density){8.dp.toPx()})}
+        val textMotion=remember(textDepth,textMidpoint,mainTransition.isRunning,pageCoordinates,textOverlays,textBlurCache) {TextMotion(textDepth,textMidpoint,mainTransition.isRunning,pageCoordinates,textOverlays,textBlurCache)}
+        CompositionLocalProvider(LocalTextMotion provides textMotion) {
+        Box(Modifier.fillMaxSize().onGloballyPositioned {pageCoordinates.value=it}.then(pageSwipe(visiblePage==page && !customMounted && !settingsMounted) {delta -> page=(page+delta).coerceIn(0,1)}).background(colors.background).then(if(visiblePage!=page || customMounted || settingsMounted) Modifier.clearAndSetSemantics {}.blockMotionInput() else Modifier)) {
         if(visiblePage==1) {
             val aboutLayer=remember {HazeState()}
             val edgeTarget=if(aboutScroll.firstVisibleItemIndex>0) 1f else (aboutScroll.firstVisibleItemScrollOffset/with(density){24.dp.toPx()}).coerceIn(0f,1f)
@@ -446,7 +447,7 @@ private fun weekRanges(weeks: IntArray): String { val ranges= mutableListOf<Stri
         Row(Modifier.fillMaxWidth().padding(top=status,start=18.dp,end=18.dp).height(56.dp).graphicsLayer {alpha=strength},verticalAlignment=Alignment.CenterVertically) {
             if(onBack!=null) Box(Modifier.size(48.dp).clip(RoundedCornerShape(100.dp)).background(if(dark) Color.White.copy(alpha=.08f) else Color.White.copy(alpha=.6f)).border(1.dp,Color.White.copy(alpha=.4f),RoundedCornerShape(100.dp)).clickable(role=Role.Button,onClick=onBack).semantics {contentDescription="返回"},contentAlignment=Alignment.Center) {MotionText("‹",fontSize=32.sp)}
             else Spacer(Modifier.width(48.dp))
-            val pageDepth=LocalTextMotion.current?.depth ?: 0f
+            val pageDepth=LocalTextMotion.current?.depth?.value ?: 0f
             val titleAlpha by animateFloatAsState(titleReveal*((1f-pageDepth-.25f)/.75f).coerceIn(0f,1f),tween(360,easing=LinearOutSlowInEasing),label="compact-title-appearance")
             Box(Modifier.weight(1f).graphicsLayer {alpha=titleAlpha;translationY=(1f-titleAlpha)*with(density){6.dp.toPx()};scaleX=.92f+.08f*titleAlpha;scaleY=scaleX},contentAlignment=Alignment.Center) {MotionText(title,fontSize=20.sp,fontWeight=FontWeight.SemiBold,overlayAlpha=strength*titleAlpha,revealBlur=1f-titleAlpha)}
             Spacer(Modifier.width(48.dp))
@@ -761,7 +762,7 @@ private fun Modifier.blockMotionInput()=pointerInput(Unit) {
             Image(painterResource(R.drawable.ic_launcher),contentDescription="应用图标",modifier=Modifier.size(96.dp))
             MotionText("班级课表",fontSize=32.sp,fontWeight=FontWeight.Bold,modifier=Modifier.padding(top=22.dp))
             MotionText("每一周，都有清晰的安排",fontSize=15.sp,color=colors.onSurfaceVariantSummary,modifier=Modifier.padding(top=10.dp))
-            MotionText("版本 3.1.17 · Compose Miuix",fontSize=14.sp,color=colors.onSurfaceVariantSummary,modifier=Modifier.padding(top=18.dp))
+            MotionText("版本 3.1.18 · Compose Miuix",fontSize=14.sp,color=colors.onSurfaceVariantSummary,modifier=Modifier.padding(top=18.dp))
         } }
         item { MotionText("项目",fontSize=14.sp,color=colors.onSurfaceVariantSummary);Spacer(Modifier.height(10.dp));Card(insideMargin=PaddingValues(20.dp)) {
             MotionText("广交班级课表",fontSize=20.sp,fontWeight=FontWeight.SemiBold);Spacer(Modifier.height(14.dp));MotionText("全校 547 个班级\n2026—2027 · 第一学期",fontSize=14.sp,lineHeight=23.sp);Spacer(Modifier.height(22.dp))
@@ -868,22 +869,30 @@ private class TextOverlay(val layer:GraphicsLayer) {
     var anchored=false
     var baseAlpha by mutableFloatStateOf(1f)
 }
-private data class TextMotion(val depth:Float,val halfway:Float,val moving:Boolean,val pageShift:Float,val pageCoordinates:androidx.compose.ui.layout.LayoutCoordinates?,val overlays:TextOverlayRegistry)
-private val LocalTextMotion=staticCompositionLocalOf<TextMotion?> {null}
+private class PageCoordinates { var value:androidx.compose.ui.layout.LayoutCoordinates?=null }
+private class TextBlurCache(private val maximumRadius:Float) {
+    private val effects=arrayOfNulls<androidx.compose.ui.graphics.RenderEffect>(33)
+    fun effect(depth:Float):androidx.compose.ui.graphics.RenderEffect? {
+        val step=(depth.coerceIn(0f,1f)*32).roundToInt()
+        if(Build.VERSION.SDK_INT<31 || step==0)return null
+        return effects[step] ?: RenderEffect.createBlurEffect(maximumRadius*step/32f,maximumRadius*step/32f,Shader.TileMode.DECAL).asComposeRenderEffect().also {effects[step]=it}
+    }
+}
+private data class TextMotion(val depth:State<Float>,val halfway:Float,val moving:Boolean,val coordinates:PageCoordinates,val overlays:TextOverlayRegistry,val blurCache:TextBlurCache)
+private val LocalTextMotion=compositionLocalOf<TextMotion?> {null}
 
 @Composable private fun MotionText(text:String,modifier:Modifier=Modifier,color:Color=Color.Unspecified,fontSize:androidx.compose.ui.unit.TextUnit=androidx.compose.ui.unit.TextUnit.Unspecified,fontWeight:FontWeight?=null,lineHeight:androidx.compose.ui.unit.TextUnit=androidx.compose.ui.unit.TextUnit.Unspecified,headerDepth:Float=0f,overlayAlpha:Float=1f,revealBlur:Float=0f) {
     val motion=LocalTextMotion.current
     val density=androidx.compose.ui.platform.LocalDensity.current
     var upper by remember {mutableStateOf(false)}
-    val motionDepth=if(upper) motion?.depth ?: 0f else 0f
+    val motionDepth=if(upper) motion?.depth?.value ?: 0f else 0f
     val depth=maxOf(headerDepth,motionDepth)
     // Scrolling text is blurred by the same Haze region as the backdrop.
     // A separate whole-glyph blur would spill below that region's feathered edge.
     // Retain leaf-only blur for page switching, independently of scroll collapse.
     val blurDepth=maxOf(motionDepth,revealBlur).coerceIn(0f,1f)
-    val blur=remember(blurDepth,density) {
-        if(Build.VERSION.SDK_INT>=31 && blurDepth>.001f) RenderEffect.createBlurEffect(with(density){(8.dp*blurDepth).toPx()},with(density){(8.dp*blurDepth).toPx()},Shader.TileMode.DECAL).asComposeRenderEffect() else null
-    }
+    val localBlurCache=remember(density) {TextBlurCache(with(density){8.dp.toPx()})}
+    val blur=(motion?.blurCache ?: localBlurCache).effect(blurDepth)
     val recorded=rememberGraphicsLayer()
     val glyph=remember(recorded) {TextOverlay(recorded)}
     val registry=motion?.overlays
@@ -898,7 +907,7 @@ private val LocalTextMotion=staticCompositionLocalOf<TextMotion?> {null}
         val location=coords.positionInRoot()
         if(motion?.moving!=true || !glyph.anchored) {
             upper=motion!=null && location.y+coords.size.height*.5f<motion.halfway && location.y+coords.size.height>0f
-            val liveShift=motion?.pageCoordinates?.takeIf {it.isAttached}?.positionInRoot()?.x ?: motion?.pageShift ?: 0f
+            val liveShift=motion?.coordinates?.value?.takeIf {it.isAttached}?.positionInRoot()?.x ?: 0f
             glyph.position=Offset(location.x-liveShift,location.y)
             glyph.anchored=true
         }

@@ -1,10 +1,13 @@
-name: Build empty web and Android
+name: Build and publish optimized Release 3.1.18
 on:
   push:
     branches: [main]
+    paths:
+      - android/**
+      - .github/workflows/build-empty.yml
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -20,26 +23,38 @@ jobs:
           packages: platform-tools platforms;android-35 build-tools;35.0.0
           log-accepted-android-sdk-licenses: false
       - uses: gradle/actions/setup-gradle@v4
-      - name: Verify empty packaged data
-        run: |
-          node --check app.js
-          node --check sync.js
-          python - <<'PY'
-          import json
-          data=json.load(open('android/app/src/main/assets/school-data.json'))
-          assert not data['strings'] and not data['teacherProjects']
-          assert all(not c['courses'] for c in data['classes'])
-          PY
-      - name: Compile and check Android
+      - name: Compile Release and run checks
         working-directory: android
-        run: bash gradlew assembleDebug assembleRelease testDebugUnitTest lintRelease --no-daemon
-      - name: Package web
-        run: zip timetable-web-empty.zip index.html app.js sync.js school-data.js style.css sync.css icon.svg .nojekyll PROGRESSIVE-BLUR-LICENSE.txt
+        run: bash gradlew assembleRelease testDebugUnitTest lintRelease --no-daemon
+      - name: Verify Release is not debuggable and contains no timetable
+        run: |
+          mkdir public
+          cp android/app/build/outputs/apk/release/app-release.apk public/Class-Timetable-3.1.18-empty-release.apk
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging public/*.apk > /tmp/apk-info.txt
+          if grep -q 'application-debuggable' /tmp/apk-info.txt; then exit 1; fi
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify public/*.apk
+          python - <<'PY'
+          import zipfile,json,pathlib,hashlib
+          p=pathlib.Path('public/Class-Timetable-3.1.18-empty-release.apk')
+          with zipfile.ZipFile(p) as z:
+              d=json.loads(z.read('assets/school-data.json'))
+              assert not d['strings'] and not d['teacherProjects']
+              assert all(not c['courses'] for c in d['classes'])
+          (p.parent/'SHA256SUMS.txt').write_text(hashlib.sha256(p.read_bytes()).hexdigest()+'  '+p.name+'\n')
+          PY
       - uses: actions/upload-artifact@v4
         with:
-          name: timetable-empty-3.1.17
-          path: |
-            timetable-web-empty.zip
-            android/app/build/outputs/apk/debug/*.apk
-            android/app/build/outputs/apk/release/*.apk
+          name: timetable-optimized-release-3.1.18
+          path: public/*
           if-no-files-found: error
+      - name: Publish optimized APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          cat > /tmp/notes.md <<'EOF'
+          无内置课表版 3.1.18。使用非调试 Release 构建，保留页面滑动与文字动画，减少页面位置变化导致的重组，共享并缓存文字模糊效果。
+          
+          APK 使用测试签名，无法保证覆盖旧版本；签名不匹配时，卸载前请先导出本机备份。尚未进行实机帧耗时测量。
+          EOF
+          gh release create empty-v3.1.18 public/* --target "$GITHUB_SHA" --title '班级课表 3.1.18 · Release 性能优化' --notes-file /tmp/notes.md --latest

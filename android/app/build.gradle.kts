@@ -2,11 +2,11 @@ plugins { id("com.android.application");id("org.jetbrains.kotlin.android");id("o
 android {
  namespace = "cn.gdcp.timetable"
  compileSdk = 35
- defaultConfig { applicationId = "cn.gdcp.timetable";minSdk = 26;targetSdk = 35;versionCode = 45;versionName = "3.1.17" }
+ defaultConfig { applicationId = "cn.gdcp.timetable";minSdk = 26;targetSdk = 35;versionCode = 46;versionName = "3.1.18" }
  buildFeatures { compose = true }
  compileOptions { sourceCompatibility = JavaVersion.VERSION_17;targetCompatibility = JavaVersion.VERSION_17 }
  kotlinOptions { jvmTarget = "17" }
- buildTypes { release { isMinifyEnabled = false } }
+ buildTypes { release { isMinifyEnabled = false; signingConfig = signingConfigs.getByName("debug") } }
  packaging { resources.excludes += setOf("META-INF/AL2.0", "META-INF/LGPL2.1") }
 }
 dependencies {
