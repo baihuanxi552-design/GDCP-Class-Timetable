@@ -8,14 +8,15 @@ public final class SchoolData {
  public static final List<String> NAMES=new ArrayList<>();
  private static JSONArray entries,strings;
  private static JSONObject catalog;
+ private static String loadedCatalog;
  public static JSONObject catalog(){return catalog;}
- public static void invalidate(){entries=null;strings=null;NAMES.clear();ScheduleData.COURSES=new ScheduleData.Course[0];}
+ public static synchronized void invalidate(){entries=null;strings=null;NAMES.clear();ScheduleData.COURSES=new ScheduleData.Course[0];}
  private static JSONObject teacherProjects=new JSONObject();
  public static int selected=0,campus=0;
  public static boolean hadCachedChoice=false;
  public static synchronized void initialize(Context context){
   if(entries!=null)return;
-  try { java.io.InputStream in=context.getAssets().open("school-data.json");java.io.ByteArrayOutputStream out=new java.io.ByteArrayOutputStream();byte[] buf=new byte[8192];int n;while((n=in.read(buf))!=-1)out.write(buf,0,n);in.close();String saved=context.getSharedPreferences("school",Context.MODE_MULTI_PROCESS).getString("catalog",null);JSONObject root=new JSONObject(saved==null?new String(out.toByteArray(),StandardCharsets.UTF_8):saved);catalog=root;teacherProjects=root.optJSONObject("teacherProjects");if(teacherProjects==null)teacherProjects=new JSONObject();entries=root.getJSONArray("classes");strings=root.getJSONArray("strings");for(int i=0;i<entries.length();i++)NAMES.add(entries.getJSONObject(i).getString("name"));android.content.SharedPreferences prefs=context.getSharedPreferences("school",Context.MODE_MULTI_PROCESS);int cachedIndex=prefs.getInt("class",0);String savedName=prefs.getString("className",null);if(savedName!=null)cachedIndex=NAMES.indexOf(savedName);int cachedCampus=prefs.getInt("campus",0);hadCachedChoice=prefs.contains("class")&&prefs.contains("campus")&&cachedIndex>=0&&cachedIndex<NAMES.size()&&cachedCampus>=0&&cachedCampus<4;load(context,hadCachedChoice?cachedIndex:0,hadCachedChoice?cachedCampus:0,false); }
+  try { java.io.InputStream in=context.getAssets().open("school-data.json");java.io.ByteArrayOutputStream out=new java.io.ByteArrayOutputStream();byte[] buf=new byte[8192];int n;while((n=in.read(buf))!=-1)out.write(buf,0,n);in.close();String saved=context.getSharedPreferences("school",Context.MODE_MULTI_PROCESS).getString("catalog",null);loadedCatalog=saved;JSONObject root=new JSONObject(saved==null?new String(out.toByteArray(),StandardCharsets.UTF_8):saved);catalog=root;teacherProjects=root.optJSONObject("teacherProjects");if(teacherProjects==null)teacherProjects=new JSONObject();entries=root.getJSONArray("classes");strings=root.getJSONArray("strings");for(int i=0;i<entries.length();i++)NAMES.add(entries.getJSONObject(i).getString("name"));android.content.SharedPreferences prefs=context.getSharedPreferences("school",Context.MODE_MULTI_PROCESS);int cachedIndex=prefs.getInt("class",0);String savedName=prefs.getString("className",null);if(savedName!=null)cachedIndex=NAMES.indexOf(savedName);int cachedCampus=prefs.getInt("campus",0);hadCachedChoice=prefs.contains("class")&&prefs.contains("campus")&&cachedIndex>=0&&cachedIndex<NAMES.size()&&cachedCampus>=0&&cachedCampus<4;load(context,hadCachedChoice?cachedIndex:0,hadCachedChoice?cachedCampus:0,false); }
   catch(Exception e){entries=null;NAMES.clear();NAMES.add("我的课表");}
  }
  public static synchronized void select(Context context,int index,int campusIndex){load(context,index,campusIndex,true);}
@@ -31,7 +32,7 @@ public final class SchoolData {
   if(!hadCachedChoice||!context.getSharedPreferences("school",Context.MODE_MULTI_PROCESS).getBoolean("setupCompleted",false))return false;
   try{JSONObject saved=new JSONObject(groupChoices(context,selected));for(Map.Entry<String,List<String>> e:groups(selected).entrySet()){String value=saved.optString(e.getKey(),"");if(!value.equals("*")&&!value.equals("none")&&!e.getValue().contains(value))return false;}return true;}catch(Exception e){return false;}
  }
- public static synchronized void reload(Context context){initialize(context);android.content.SharedPreferences prefs=context.getSharedPreferences("school",Context.MODE_MULTI_PROCESS);int index=NAMES.indexOf(prefs.getString("className",title()));if(index>=0)load(context,index,prefs.getInt("campus",campus),false);}
+ public static synchronized void reload(Context context){String saved=context.getSharedPreferences("school",Context.MODE_MULTI_PROCESS).getString("catalog",null);if(!Objects.equals(saved,loadedCatalog))invalidate();initialize(context);android.content.SharedPreferences prefs=context.getSharedPreferences("school",Context.MODE_MULTI_PROCESS);int index=NAMES.indexOf(prefs.getString("className",title()));if(index>=0)load(context,index,prefs.getInt("campus",campus),false);}
  public static void confirm(Context context,int index,int campusIndex){select(context,index,campusIndex);hadCachedChoice=true;context.getSharedPreferences("school",Context.MODE_MULTI_PROCESS).edit().putBoolean("setupCompleted",true).commit();}
  public static String groupKey(String name){
   if(name.contains("体育"))return "体育课";

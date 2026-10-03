@@ -6,6 +6,8 @@
 
 网页为静态文件，无编译步骤，执行 `python -m http.server 8000` 可预览。Android 需要 JDK17+、SDK35，执行 `./gradlew assembleRelease testDebugUnitTest lintRelease`。发布版本需要签名。
 
-旧 APK、含个人数据的快捷指令示例和自动发布旧 APK 的工作流已从工作目录删除。远端发布与 Git 历史需另行清理；删除当前文件不会清除历史提交中的数据。
+旧 APK、含个人数据的快捷指令示例、旧 Release 和旧标签已删除。主分支已从无课表数据的新根提交开始；原课表及历史备份仅保存在用户工作区。GitHub 缓存中的旧对象需要平台另行处理。
+
+自动构建产物在 GitHub Actions 的 `timetable-empty-3.1.17` 中，包括网页 ZIP、可安装的调试签名 APK 和未签名 release APK。调试签名 APK 无法覆盖旧正式签名应用，迁移前先导出本机备份。
 
 第三方许可保留在工程中。
