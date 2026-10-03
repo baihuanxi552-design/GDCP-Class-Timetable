@@ -133,12 +133,15 @@ private fun weekRanges(weeks: IntArray): String { val ranges= mutableListOf<Stri
     if(!configured) {
         val colors=MiuixTheme.colorScheme
         Column(Modifier.fillMaxSize().background(colors.background).verticalScroll(rememberScrollState()).safeDrawingPadding().padding(24.dp),verticalArrangement=Arrangement.spacedBy(20.dp)) {
-            MotionText("欢迎使用班级课表",fontSize=30.sp,fontWeight=FontWeight.Bold,modifier=Modifier.padding(top=40.dp))
+            MotionText("欢迎使用个人课表",fontSize=30.sp,fontWeight=FontWeight.Bold,modifier=Modifier.padding(top=40.dp))
             MotionText("登录教务系统，导入属于你的个人课表。之后打开会自动读取本机数据。",fontSize=15.sp,color=colors.onSurfaceVariantSummary)
             Card(insideMargin=PaddingValues(22.dp)) {
                 MotionText("1 · 选择校区作息",fontSize=19.sp,fontWeight=FontWeight.SemiBold)
-                SchoolData.CAMPUSES.forEachIndexed {index,name->
-                    TextButton((if(selectedCampus==index) "✓  " else "")+name,{selectedCampus=index},Modifier.fillMaxWidth())
+                Spacer(Modifier.height(16.dp))
+                Column(verticalArrangement=Arrangement.spacedBy(12.dp)) {
+                    SchoolData.CAMPUSES.forEachIndexed {index,name->
+                        TextButton((if(selectedCampus==index) "✓  " else "")+name,{selectedCampus=index},Modifier.fillMaxWidth().heightIn(min=48.dp).semantics {selected=selectedCampus==index})
+                    }
                 }
             }
             Card(insideMargin=PaddingValues(22.dp)) {
@@ -258,12 +261,12 @@ private fun weekRanges(weeks: IntArray): String { val ranges= mutableListOf<Stri
         LazyColumn(Modifier.fillMaxSize().hazeSource(courseLayer),state=courseScroll, contentPadding=PaddingValues(start=18.dp+screenSafe.calculateLeftPadding(androidx.compose.ui.unit.LayoutDirection.Ltr),end=18.dp+screenSafe.calculateRightPadding(androidx.compose.ui.unit.LayoutDirection.Ltr),top=18.dp+screenSafe.calculateTopPadding(),bottom=132.dp+screenSafe.calculateBottomPadding()),verticalArrangement=Arrangement.spacedBy(16.dp)) {
             item { Column(Modifier.padding(horizontal=6.dp,vertical=12.dp)) {
                 Box(Modifier.height(20.dp)) { MotionText("广东交通职业技术学院 · ${SchoolData.CAMPUSES[selectedCampus]}",fontSize=12.sp,color=colors.onSurfaceVariantSummary) }
-                MotionText("班级课表",headerDepth=titleCollapse(courseScroll),fontSize=36.sp,fontWeight=FontWeight.Bold,modifier=Modifier.padding(vertical=10.dp))
+                MotionText("个人课表",headerDepth=titleCollapse(courseScroll),fontSize=36.sp,fontWeight=FontWeight.Bold,modifier=Modifier.padding(vertical=10.dp))
                 MotionText("${SchoolData.title()}\n2026—2027 · 第一学期",fontSize=13.sp,color=colors.onSurfaceVariantSummary)
             } }
             item { Card(insideMargin=PaddingValues(16.dp),colors=CardDefaults.defaultColors(color=colors.secondaryContainer)) {
                 MotionText("桌面小部件",fontWeight=FontWeight.SemiBold,fontSize=14.sp)
-                MotionText("长按手机桌面空白处，在“小部件 / 窗口小工具”中找到“班级课表”；小米请进入“安卓小部件”。",fontSize=12.sp,modifier=Modifier.padding(top=6.dp))
+                MotionText("长按手机桌面空白处，在“小部件 / 窗口小工具”中找到“个人课表”；小米请进入“安卓小部件”。",fontSize=12.sp,modifier=Modifier.padding(top=6.dp))
             } }
             item { Card(insideMargin=PaddingValues(20.dp)) {
                 MotionText("今天",fontSize=12.sp,color=colors.onSurfaceVariantSummary)
@@ -325,9 +328,9 @@ private fun weekRanges(weeks: IntArray): String { val ranges= mutableListOf<Stri
                     }
                 }
             }
-            item { Column(Modifier.padding(6.dp)) { MotionText("课表说明",fontWeight=FontWeight.SemiBold,fontSize=14.sp);MotionText(if(selectedClass==0) "体育课按所选分组或教师显示，请以个人教务课表为准。\n军训（含入学教育）：第3—4周，未提供具体节次。\n尚未排定时间：机电装备专业群导论、军事理论。\n\n核对日期 2026.10.02 · 最新调整以教务系统为准" else "本数据来自2026—2027第一学期班级课表查询，包含体育等分组选课。同一时段的不同分组不代表全部需要上课，具体以个人课表为准。\n校区作息按已提供的学校时间表配置，3—4节在部分教学区域延后20分钟。\n核对日期 2026.10.02 · 最新调整以教务系统为准",fontSize=12.sp,color=colors.onSurfaceVariantSummary,modifier=Modifier.padding(top=8.dp)) } }
+            item { Column(Modifier.padding(6.dp)) { MotionText("课表说明",fontWeight=FontWeight.SemiBold,fontSize=14.sp);MotionText("课程来自你的个人教务课表或本机自建课程。体育课以实际个人选课为准。\n校区作息按学校时间表配置。最新调整以教务系统为准，调整后请重新导入。",fontSize=12.sp,color=colors.onSurfaceVariantSummary,modifier=Modifier.padding(top=8.dp)) } }
         }
-        TopScrollEdge(courseLayer,edgeStrength,dark,Modifier.align(Alignment.TopCenter),title="班级课表",titleReveal=titleReveal(courseScroll))
+        TopScrollEdge(courseLayer,edgeStrength,dark,Modifier.align(Alignment.TopCenter),title="个人课表",titleReveal=titleReveal(courseScroll))
         }
         }
         }
@@ -401,7 +404,7 @@ private fun weekRanges(weeks: IntArray): String { val ranges= mutableListOf<Stri
         SuperDialog(show=detailShown,title=course.displayName(),onDismissRequest={detailShown.value=false;detailIndex=-1}) {
             Column(Modifier.heightIn(max=420.dp).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(14.dp)) {
                 DetailRow("教师",course.teacher);DetailRow("教室",course.room);DetailRow("时间","星期${days[course.day-1]} · ${course.time()}");DetailRow("节次","第 ${course.first}–${course.last} 节");DetailRow("周次",weekRanges(course.weeks))
-                if(course.name.contains("大学体育")) MotionText(if(selectedClass==0) "体育课按已选分组或教师显示，请以个人教务课表为准。" else "本班级课表包含体育分组，请按自己的选课安排查看。",fontSize=13.sp)
+                if(course.name.contains("大学体育")) MotionText(if(selectedClass==0) "体育课按已选分组或教师显示，请以个人教务课表为准。" else "本个人课表包含体育分组，请按自己的选课安排查看。",fontSize=13.sp)
                 TextButton("关闭",{detailShown.value=false;detailIndex=-1},Modifier.fillMaxWidth(),colors=ButtonDefaults.textButtonColorsPrimary())
             }
         }
@@ -600,12 +603,12 @@ private fun Modifier.blockMotionInput()=pointerInput(Unit) {
     var draftGroups by rememberSaveable(draftClass) { mutableStateOf(if(draftClass>=0) SchoolData.groupChoices(context,draftClass) else "{}") }
     val colors=MiuixTheme.colorScheme
     Column(verticalArrangement=Arrangement.spacedBy(12.dp)) {
-        MotionText("1 · 选择班级",fontWeight=FontWeight.SemiBold,fontSize=16.sp)
-        MotionText("搜索年级、专业或班级名称",fontSize=12.sp,color=colors.onSurfaceVariantSummary)
+        MotionText("1 · 选择课表",fontWeight=FontWeight.SemiBold,fontSize=16.sp)
+        MotionText("搜索年级、专业或课表名称",fontSize=12.sp,color=colors.onSurfaceVariantSummary)
         TextField(value=search,onValueChange={search=it},modifier=Modifier.fillMaxWidth())
         LazyColumn(Modifier.fillMaxWidth().height(220.dp),verticalArrangement=Arrangement.spacedBy(6.dp)) {
             val matches=SchoolData.NAMES.withIndex().filter { it.value.contains(search.trim(),ignoreCase=true) }
-            if(matches.isEmpty()) item { MotionText("没有找到班级，试试专业名称或年级。",modifier=Modifier.padding(12.dp)) }
+            if(matches.isEmpty()) item { MotionText("没有找到课表，试试专业名称或年级。",modifier=Modifier.padding(12.dp)) }
             matches.forEach { entry -> item(key=entry.index) {
                 val chosen=entry.index==draftClass
                 Card(Modifier.fillMaxWidth().semantics { role=Role.RadioButton;selected=chosen },insideMargin=PaddingValues(14.dp),colors=CardDefaults.defaultColors(color=if(chosen) colors.secondaryContainer else colors.surface),onClick={draftClass=entry.index}) {
@@ -616,7 +619,7 @@ private fun Modifier.blockMotionInput()=pointerInput(Unit) {
                 }
             } }
         }
-        MotionText(if(draftClass>=0) "已选班级：${SchoolData.displayName(draftClass)}" else "请选择班级",fontSize=13.sp,color=colors.onSurfaceVariantSummary)
+        MotionText(if(draftClass>=0) "已选课表：${SchoolData.displayName(draftClass)}" else "请选择课表",fontSize=13.sp,color=colors.onSurfaceVariantSummary)
         MotionText("2 · 选择所在校区",fontWeight=FontWeight.SemiBold,fontSize=16.sp,modifier=Modifier.padding(top=8.dp))
         Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
             (0..1).forEach { row -> Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
@@ -630,7 +633,7 @@ private fun Modifier.blockMotionInput()=pointerInput(Unit) {
         MotionText("作息按校区和教学区域计算，分组选课以个人教务课表为准。",fontSize=12.sp,color=colors.onSurfaceVariantSummary)
         if(groupOptions.isNotEmpty()) {
             MotionText("3 · 分组选课",fontWeight=FontWeight.SemiBold,fontSize=16.sp)
-            MotionText("未标注的项目按其他班级中同一教师的明确项目补充，注明来源；组号只采用本班已标注的记录。",fontSize=12.sp,color=colors.onSurfaceVariantSummary)
+            MotionText("未标注的项目按其他课表中同一教师的明确项目补充，注明来源；组号只采用本班已标注的记录。",fontSize=12.sp,color=colors.onSurfaceVariantSummary)
             groupOptions.forEach { (category,options) ->
                 MotionText(category,fontWeight=FontWeight.SemiBold,fontSize=14.sp)
                 val chosen=JSONObject(draftGroups).optString(category,"")
@@ -772,20 +775,20 @@ private fun Modifier.blockMotionInput()=pointerInput(Unit) {
         } }
         item { Column(Modifier.fillMaxWidth().padding(vertical=20.dp),horizontalAlignment=Alignment.CenterHorizontally) {
             Image(painterResource(R.drawable.ic_launcher),contentDescription="应用图标",modifier=Modifier.size(96.dp))
-            MotionText("班级课表",fontSize=32.sp,fontWeight=FontWeight.Bold,modifier=Modifier.padding(top=22.dp))
+            MotionText("个人课表",fontSize=32.sp,fontWeight=FontWeight.Bold,modifier=Modifier.padding(top=22.dp))
             MotionText("每一周，都有清晰的安排",fontSize=15.sp,color=colors.onSurfaceVariantSummary,modifier=Modifier.padding(top=10.dp))
-            MotionText("版本 3.2.2 · Compose Miuix",fontSize=14.sp,color=colors.onSurfaceVariantSummary,modifier=Modifier.padding(top=18.dp))
+            MotionText("版本 3.2.3 · Compose Miuix",fontSize=14.sp,color=colors.onSurfaceVariantSummary,modifier=Modifier.padding(top=18.dp))
         } }
         item { MotionText("项目",fontSize=14.sp,color=colors.onSurfaceVariantSummary);Spacer(Modifier.height(10.dp));Card(insideMargin=PaddingValues(20.dp)) {
-            MotionText("广交班级课表",fontSize=20.sp,fontWeight=FontWeight.SemiBold);Spacer(Modifier.height(14.dp));MotionText("全校 547 个班级\n2026—2027 · 第一学期",fontSize=14.sp,lineHeight=23.sp);Spacer(Modifier.height(22.dp))
-            TextButton("GitHub 项目 ↗",{open("https://github.com/baihuanxi552-design/qingyuan-class-timetable")},Modifier.fillMaxWidth())
+            MotionText("广交个人课表",fontSize=20.sp,fontWeight=FontWeight.SemiBold);Spacer(Modifier.height(14.dp));MotionText("你的课程与每周安排\n2026—2027 · 第一学期",fontSize=14.sp,lineHeight=23.sp);Spacer(Modifier.height(22.dp))
+            TextButton("GitHub 项目 ↗",{open("https://github.com/baihuanxi552-design/GDCP-Class-Timetable")},Modifier.fillMaxWidth())
             Spacer(Modifier.height(16.dp));Box(Modifier.fillMaxWidth().height(1.dp).background(colors.onSurface.copy(alpha=.08f)));Spacer(Modifier.height(16.dp))
-            TextButton("网页版课表 ↗",{open("https://baihuanxi552-design.github.io/qingyuan-class-timetable/")},Modifier.fillMaxWidth())
+            TextButton("网页版课表 ↗",{open("https://baihuanxi552-design.github.io/GDCP-Class-Timetable/")},Modifier.fillMaxWidth())
         } }
         item { MotionText("适配与数据",fontSize=14.sp,color=colors.onSurfaceVariantSummary);Spacer(Modifier.height(10.dp));Card(insideMargin=PaddingValues(20.dp)) {
             MotionText("安卓桌面小部件",fontSize=18.sp,fontWeight=FontWeight.SemiBold)
             MotionText("提供小米、vivo、OPPO、华为和荣耀风格。通过系统安卓小部件入口添加；具体显示与权限由手机桌面决定。",fontSize=14.sp,modifier=Modifier.padding(top=10.dp))
-            MotionText("离线内置课表，班级与校区保存在本机。核对日期：2026.10.02。最新调整以教务系统为准，分组选课以个人课表为准。",fontSize=13.sp,color=colors.onSurfaceVariantSummary,modifier=Modifier.padding(top=18.dp))
+            MotionText("个人教务课表与自建课程保存在本机，可离线查看。最新调整以教务系统为准，调整后请重新导入。",fontSize=13.sp,color=colors.onSurfaceVariantSummary,modifier=Modifier.padding(top=18.dp))
         } }
     }
 }
@@ -798,7 +801,7 @@ private fun Modifier.blockMotionInput()=pointerInput(Unit) {
     BackHandler {onClose()}
     Column(Modifier.fillMaxSize().then(if(embedded) Modifier else Modifier.background(colors.background)).imePadding().verticalScroll(rememberScrollState()).safeDrawingPadding().padding(24.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
         MotionText("自助添加课程",fontSize=30.sp,fontWeight=FontWeight.Bold)
-        MotionText("仅保存到本机当前班级，不修改学校课表。保存后显示在课表及小部件中。",fontSize=13.sp,color=colors.onSurfaceVariantSummary)
+        MotionText("仅保存到本机当前课表，不修改学校课表。保存后显示在课表及小部件中。",fontSize=13.sp,color=colors.onSurfaceVariantSummary)
         MotionText("课程名称（必填）");TextField(name,{name=it},Modifier.fillMaxWidth())
         MotionText("教师（选填）");TextField(teacher,{teacher=it},Modifier.fillMaxWidth())
         MotionText("教室（选填）");TextField(room,{room=it},Modifier.fillMaxWidth())
@@ -846,19 +849,19 @@ private fun Modifier.blockMotionInput()=pointerInput(Unit) {
     Column(Modifier.fillMaxSize().background(colors.background).hazeSource(haze).imePadding().verticalScroll(scroll).safeDrawingPadding().padding(24.dp),verticalArrangement=Arrangement.spacedBy(16.dp)) {
         MotionText("设置",fontSize=32.sp,fontWeight=FontWeight.Bold,modifier=Modifier.padding(top=16.dp))
         MotionText("当前课表",fontSize=14.sp,color=colors.onSurfaceVariantSummary)
-        Card(insideMargin=PaddingValues(20.dp),onClick=onEdit,modifier=Modifier.semantics { role=Role.Button;contentDescription="更改班级、校区和分组" }) {
+        Card(insideMargin=PaddingValues(20.dp),onClick=onEdit,modifier=Modifier.semantics { role=Role.Button;contentDescription="更改课表、校区和分组" }) {
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {Column(Modifier.weight(1f)) {MotionText("更改课表",fontSize=19.sp,fontWeight=FontWeight.SemiBold);MotionText(SchoolData.title()+" · "+SchoolData.CAMPUSES[SchoolData.campus],fontSize=13.sp,color=colors.onSurfaceVariantSummary,modifier=Modifier.padding(top=8.dp))};MotionText("›",fontSize=28.sp,color=colors.onSurfaceVariantSummary)}
         }
         MotionText(if(PersonalImport.active(context)) "正在使用个人教务课表" else "教务系统",fontSize=14.sp,color=colors.onSurfaceVariantSummary)
         Button(onClick={jwImporter.launch(Intent(context,JwImportActivity::class.java))},modifier=Modifier.fillMaxWidth()) {MotionText("登录教务系统并解析个人课表")}
-        if(PersonalImport.active(context)) TextButton("切回班级课表",{PersonalImport.useClass(context);onRestored()},Modifier.fillMaxWidth())
+        if(PersonalImport.active(context)) TextButton("切回个人课表",{PersonalImport.useClass(context);onRestored()},Modifier.fillMaxWidth())
         MotionText("备份",fontSize=14.sp,color=colors.onSurfaceVariantSummary,modifier=Modifier.padding(top=16.dp))
         Card(insideMargin=PaddingValues(0.dp)) {
             BackupRow("保存到本地",false) {export.launch("广交课表备份-${LocalDate.now(ScheduleData.ZONE)}.json")}
             Box(Modifier.fillMaxWidth().padding(horizontal=20.dp).height(1.dp).background(colors.onSurface.copy(alpha=.06f)))
             BackupRow("从本地导入",true) {importer.launch(arrayOf("application/json","text/plain","application/octet-stream"))}
         }
-        MotionText("备份包含班级、校区、各班分组选择和自建课程。通过系统文件选择器保存或读取，无需存储权限。",fontSize=13.sp,color=colors.onSurfaceVariantSummary)
+        MotionText("备份包含课表、校区、各班分组选择和自建课程。通过系统文件选择器保存或读取，无需存储权限。",fontSize=13.sp,color=colors.onSurfaceVariantSummary)
         if(notice.isNotEmpty()) MotionText(notice,fontSize=14.sp,modifier=Modifier.semantics {liveRegion=LiveRegionMode.Polite})
         if(pending!=null) {Button(onClick={try {BackupData.restore(context,pending!!);pending=null;onRestored();notice="恢复成功，课表和小部件已更新"}catch(e:Exception){notice="恢复失败：${e.message}"}},modifier=Modifier.fillMaxWidth(),colors=ButtonDefaults.buttonColorsPrimary()) {MotionText("确认恢复并替换",color=colors.onPrimary)};TextButton("取消导入",{pending=null;notice="已取消，原数据保持不变"},Modifier.fillMaxWidth())}
         TextButton("返回关于",onClose,Modifier.fillMaxWidth())

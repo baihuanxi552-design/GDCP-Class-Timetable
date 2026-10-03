@@ -2,7 +2,7 @@ plugins { id("com.android.application");id("org.jetbrains.kotlin.android");id("o
 android {
  namespace = "cn.gdcp.timetable"
  compileSdk = 35
- defaultConfig { applicationId = "cn.gdcp.timetable";minSdk = 26;targetSdk = 35;versionCode = 49;versionName = "3.2.2" }
+ defaultConfig { applicationId = "cn.gdcp.timetable";minSdk = 26;targetSdk = 35;versionCode = 50;versionName = "3.2.3" }
  buildFeatures { compose = true }
  compileOptions { sourceCompatibility = JavaVersion.VERSION_17;targetCompatibility = JavaVersion.VERSION_17 }
  kotlinOptions { jvmTarget = "17" }

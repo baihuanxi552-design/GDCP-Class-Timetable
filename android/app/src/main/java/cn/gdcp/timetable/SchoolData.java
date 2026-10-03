@@ -50,7 +50,7 @@ public final class SchoolData {
   String[] parts=option.split("｜教师：",2);String name=parts[0];String teacher=parts.length==2?" · 教师："+parts[1]:"";
   java.util.regex.Matcher match=java.util.regex.Pattern.compile("[（(]分组(\\d+)[（(](.+?)[）)][）)]").matcher(name);
   if(match.find())return match.group(2)+" · 第"+match.group(1)+"组"+teacher;
-  if(name.contains("体育")){String project=parts.length==2?teacherProjects.optString(parts[1],""):"";return project.isEmpty()?"大学体育 · 项目未标注"+teacher:project+teacher+"（据其他班级）";}
+  if(name.contains("体育")){String project=parts.length==2?teacherProjects.optString(parts[1],""):"";return project.isEmpty()?"大学体育 · 项目未标注"+teacher:project+teacher+"（据其他课表）";}
   return name+teacher;
  }
 

@@ -36,7 +36,7 @@
  function parse(doc){
   const table=doc.querySelector('#timetable');if(!table)throw Error('未找到个人课表，请先登录并打开“我的课表”的个人课表页面');
   const semester=doc.querySelector('#xnxq01id');if(semester&&semester.value!=='2026-2027-1')throw Error('请选择2026—2027第一学期');
-  if(table.querySelector('tr')?.cells.length>10)throw Error('请使用个人课表，不能导入全校班级查询结果');
+  if(table.querySelector('tr')?.cells.length>10)throw Error('请使用个人课表，不能导入全校课表查询结果');
   const home=!!table.querySelector('.item-box .tch-name');
   const homeSemester=[...doc.querySelectorAll('select')].find(s=>/^\d{4}-\d{4}-\d$/.test(s.selectedOptions[0]?.textContent.trim()||''))?.selectedOptions[0]?.textContent.trim();
   if(homeSemester&&homeSemester!=='2026-2027-1')throw Error('请选择2026—2027第一学期');

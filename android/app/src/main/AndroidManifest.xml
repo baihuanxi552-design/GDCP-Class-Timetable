@@ -3,22 +3,22 @@
  <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
  <uses-permission android:name="android.permission.INTERNET"/>
 
- <application android:name=".ScheduleApplication" android:label="班级课表" android:icon="@drawable/ic_launcher" android:theme="@style/AppTheme" android:allowBackup="false" android:usesCleartextTraffic="false" android:supportsRtl="true">
+ <application android:name=".ScheduleApplication" android:label="个人课表" android:icon="@drawable/ic_launcher" android:theme="@style/AppTheme" android:allowBackup="false" android:usesCleartextTraffic="false" android:supportsRtl="true">
   <activity android:name=".MainActivity" android:exported="true" android:windowSoftInputMode="adjustResize">
    <intent-filter><action android:name="android.intent.action.MAIN"/><category android:name="android.intent.category.LAUNCHER"/></intent-filter>
   </activity>
  <activity android:name=".JwImportActivity" android:exported="false"/>
  <activity android:name=".WidgetSettingsActivity" android:exported="true"><intent-filter><action android:name="android.appwidget.action.APPWIDGET_CONFIGURE"/></intent-filter></activity>
 
-<receiver android:name=".NextWidgetProvider" android:label="班级课表 · 下一节课" android:exported="true" android:process=":widgetProvider">
+<receiver android:name=".NextWidgetProvider" android:label="个人课表 · 下一节课" android:exported="true" android:process=":widgetProvider">
  <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/><action android:name="miui.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
  <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_next"/>
  </receiver>
-<receiver android:name=".TodayWidgetProvider" android:label="班级课表 · 今日课程" android:exported="true" android:process=":widgetProvider">
+<receiver android:name=".TodayWidgetProvider" android:label="个人课表 · 今日课程" android:exported="true" android:process=":widgetProvider">
  <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/><action android:name="miui.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
  <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_today"/>
  </receiver>
-<receiver android:name=".OverviewWidgetProvider" android:label="班级课表 · 今日总览" android:exported="true" android:process=":widgetProvider">
+<receiver android:name=".OverviewWidgetProvider" android:label="个人课表 · 今日总览" android:exported="true" android:process=":widgetProvider">
  <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE"/><action android:name="miui.appwidget.action.APPWIDGET_UPDATE"/></intent-filter>
  <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_overview"/>
  </receiver>
