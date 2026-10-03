@@ -35,6 +35,8 @@ import top.yukonga.miuix.kmp.theme.MiuixTheme
 @Composable
 internal fun FirstWelcome(onContinue: () -> Unit) {
     val colors = MiuixTheme.colorScheme
+    val dark = androidx.compose.foundation.isSystemInDarkTheme()
+    val activity = androidx.activity.compose.LocalActivity.current
     var completed by rememberSaveable { mutableStateOf(false) }
     val reduced = !ValueAnimator.areAnimatorsEnabled()
     val instant = completed || reduced
@@ -51,8 +53,8 @@ internal fun FirstWelcome(onContinue: () -> Unit) {
             logo.snapTo(1f); visibility.snapTo(1f); controls.snapTo(1f); glow.snapTo(1f)
             completed = true
         } else {
-            launch { glow.animateTo(1f, tween(2200, easing = ease)) }
-            launch { visibility.animateTo(1f, tween(700, delayMillis = 60)) }
+            launch { glow.animateTo(1f, tween(2200, easing = CubicBezierEasing(0.25f, 0f, 0.2f, 1f))) }
+            launch { visibility.animateTo(1f, tween(700, delayMillis = 450)) }
             launch {
                 controls.animateTo(1f, tween(450, delayMillis = 1340, easing = ease))
                 completed = true
@@ -62,25 +64,29 @@ internal fun FirstWelcome(onContinue: () -> Unit) {
             // Wait until the delayed controls are completely visible before preserving the end state.
         }
     }
+    val revealed by remember { derivedStateOf { glow.value > 0.5f } }
+    DisposableEffect(activity, dark, revealed) {
+        activity?.window?.let { window ->
+            androidx.core.view.WindowCompat.getInsetsController(window,window.decorView).apply {
+                isAppearanceLightStatusBars = !dark && revealed
+                isAppearanceLightNavigationBars = !dark && revealed
+            }
+        }
+        onDispose {
+            activity?.window?.let { window ->
+                androidx.core.view.WindowCompat.getInsetsController(window,window.decorView).apply {
+                    isAppearanceLightStatusBars = !dark
+                    isAppearanceLightNavigationBars = !dark
+                }
+            }
+        }
+    }
     BoxWithConstraints(Modifier.fillMaxSize().background(colors.background).graphicsLayer {
         alpha = exit.value
         scaleX = 1f + (1f - exit.value) * 0.025f; scaleY = scaleX
     }.then(if (leaving) Modifier.clearAndSetSemantics {} else Modifier)) {
         val topSpace = (maxHeight * 0.17f).coerceAtMost(140.dp)
-        Canvas(Modifier.fillMaxSize().clearAndSetSemantics {}) {
-            val g = glow.value
-            val radius = size.minDimension * (0.36f + 0.32f * g)
-            val center = Offset(size.width * 0.5f, size.height * 0.39f)
-            drawCircle(
-                Brush.radialGradient(listOf(Color(0xFF508AFF).copy(alpha = 0.24f * g), Color.Transparent), center, radius),
-                radius, center
-            )
-            val second = center + Offset(radius * 0.32f, -radius * 0.23f)
-            drawCircle(
-                Brush.radialGradient(listOf(Color(0xFF8A6BFA).copy(alpha = 0.14f * g), Color.Transparent), second, radius * 0.72f),
-                radius * 0.72f, second
-            )
-        }
+        WelcomeFlow(Modifier.fillMaxSize(), { glow.value }, dark, reduced)
         Column(
             Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(horizontal = 28.dp),
             horizontalAlignment = Alignment.CenterHorizontally
