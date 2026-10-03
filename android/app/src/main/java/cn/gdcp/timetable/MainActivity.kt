@@ -125,17 +125,29 @@ private fun weekRanges(weeks: IntArray): String { val ranges= mutableListOf<Stri
     val context=LocalContext.current
     var selectedClass by rememberSaveable { mutableIntStateOf(SchoolData.selected) }
     var selectedCampus by rememberSaveable { mutableIntStateOf(SchoolData.campus) }
-    var configured by remember { mutableStateOf(SchoolData.configured(context) || SchoolData.NAMES.size==1 && ScheduleData.COURSES.isEmpty()) }
+    var configured by remember { mutableStateOf(SchoolData.configured(context) || PersonalImport.active(context) || ScheduleData.COURSES.isNotEmpty() || context.getSharedPreferences("school",0).getBoolean("onboardingDone",false)) }
     val settingsShown=remember { mutableStateOf(false) }
+    val firstLogin=rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        if(PersonalImport.active(context)) {SchoolData.confirm(context,selectedClass,selectedCampus);configured=true;BaseWidgetProvider.updateAll(context)}
+    }
     if(!configured) {
-        Box(Modifier.fillMaxSize().background(MiuixTheme.colorScheme.background).imePadding()) {
-            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).safeDrawingPadding().padding(24.dp),verticalArrangement=Arrangement.spacedBy(16.dp)) {
-                MotionText("设置你的课表",fontSize=30.sp,fontWeight=FontWeight.Bold,modifier=Modifier.padding(top=24.dp))
-                MotionText("选择班级和校区，只需设置一次。之后打开会自动读取，你也可以随时更改。",fontSize=14.sp,color=MiuixTheme.colorScheme.onSurfaceVariantSummary)
-                SetupChoices(if(SchoolData.hadCachedChoice) selectedClass else -1,if(SchoolData.hadCachedChoice) selectedCampus else -1,{ index,campus,groups ->
-                    SchoolData.confirmGroups(context,index,campus,groups);selectedClass=index;selectedCampus=campus;configured=true;BaseWidgetProvider.updateAll(context)
-                },null)
+        val colors=MiuixTheme.colorScheme
+        Column(Modifier.fillMaxSize().background(colors.background).verticalScroll(rememberScrollState()).safeDrawingPadding().padding(24.dp),verticalArrangement=Arrangement.spacedBy(20.dp)) {
+            MotionText("欢迎使用班级课表",fontSize=30.sp,fontWeight=FontWeight.Bold,modifier=Modifier.padding(top=40.dp))
+            MotionText("登录教务系统，导入属于你的个人课表。之后打开会自动读取本机数据。",fontSize=15.sp,color=colors.onSurfaceVariantSummary)
+            Card(insideMargin=PaddingValues(22.dp)) {
+                MotionText("1 · 选择校区作息",fontSize=19.sp,fontWeight=FontWeight.SemiBold)
+                SchoolData.CAMPUSES.forEachIndexed {index,name->
+                    TextButton((if(selectedCampus==index) "✓  " else "")+name,{selectedCampus=index},Modifier.fillMaxWidth())
+                }
             }
+            Card(insideMargin=PaddingValues(22.dp)) {
+                MotionText("2 · 登录并导入",fontSize=19.sp,fontWeight=FontWeight.SemiBold)
+                MotionText("登录成功后自动进入首页。解析全部教学周，核对后保存即可。",fontSize=14.sp,color=colors.onSurfaceVariantSummary,modifier=Modifier.padding(top=12.dp))
+            }
+            Button(onClick={SchoolData.select(context,selectedClass,selectedCampus);firstLogin.launch(Intent(context,JwImportActivity::class.java))},modifier=Modifier.fillMaxWidth()) {MotionText("登录教务系统")}
+            TextButton("稍后导入，先进入应用",{context.getSharedPreferences("school",0).edit().putBoolean("onboardingDone",true).apply();SchoolData.select(context,selectedClass,selectedCampus);configured=true},Modifier.fillMaxWidth())
+            MotionText("仅在本机保存课程。已有备份可进入应用后，在关于 → 设置中恢复。",fontSize=13.sp,color=colors.onSurfaceVariantSummary)
         }
         return
     }
@@ -351,7 +363,7 @@ private fun weekRanges(weeks: IntArray): String { val ranges= mutableListOf<Stri
                     if((forward && state==EnterExitState.PostExit) || (!forward && state==EnterExitState.PreEnter)) 1f else 0f
                 }
                 Box(Modifier.fillMaxSize().then(depthSurface(routeDepth)).background(colors.background).then(if(!active) Modifier.clearAndSetSemantics {}.blockMotionInput() else Modifier)) {
-                    if(route==1) SettingsPage(onClose={closeSettings(false)},onEdit={settingsShown.value=true},onRestored={selectedClass=SchoolData.selected;selectedCampus=SchoolData.campus;configured=SchoolData.configured(context);courseRevision++;BaseWidgetProvider.updateAll(context)},embedded=true,active=active)
+                    if(route==1) SettingsPage(onClose={closeSettings(false)},onEdit={settingsShown.value=true},onRestored={selectedClass=SchoolData.selected;selectedCampus=SchoolData.campus;configured=SchoolData.configured(context)||PersonalImport.active(context)||context.getSharedPreferences("school",0).getBoolean("onboardingDone",false);courseRevision++;BaseWidgetProvider.updateAll(context)},embedded=true,active=active)
                     else {
                         Column(Modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState()).safeDrawingPadding().padding(24.dp),verticalArrangement=Arrangement.spacedBy(16.dp)) {
                             MotionText("更改课表",fontSize=30.sp,fontWeight=FontWeight.Bold,modifier=Modifier.padding(top=16.dp))
@@ -762,7 +774,7 @@ private fun Modifier.blockMotionInput()=pointerInput(Unit) {
             Image(painterResource(R.drawable.ic_launcher),contentDescription="应用图标",modifier=Modifier.size(96.dp))
             MotionText("班级课表",fontSize=32.sp,fontWeight=FontWeight.Bold,modifier=Modifier.padding(top=22.dp))
             MotionText("每一周，都有清晰的安排",fontSize=15.sp,color=colors.onSurfaceVariantSummary,modifier=Modifier.padding(top=10.dp))
-            MotionText("版本 3.2.1 · Compose Miuix",fontSize=14.sp,color=colors.onSurfaceVariantSummary,modifier=Modifier.padding(top=18.dp))
+            MotionText("版本 3.2.2 · Compose Miuix",fontSize=14.sp,color=colors.onSurfaceVariantSummary,modifier=Modifier.padding(top=18.dp))
         } }
         item { MotionText("项目",fontSize=14.sp,color=colors.onSurfaceVariantSummary);Spacer(Modifier.height(10.dp));Card(insideMargin=PaddingValues(20.dp)) {
             MotionText("广交班级课表",fontSize=20.sp,fontWeight=FontWeight.SemiBold);Spacer(Modifier.height(14.dp));MotionText("全校 547 个班级\n2026—2027 · 第一学期",fontSize=14.sp,lineHeight=23.sp);Spacer(Modifier.height(22.dp))

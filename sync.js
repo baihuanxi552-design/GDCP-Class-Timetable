@@ -128,4 +128,4 @@ $('backupFile').onchange=async e=>{const file=e.target.files[0];e.target.value='
 // Existing visitors keep class/campus; new group settings require one explicit confirmation.
 try{validateBackup(backupData())}catch{userState={groups:{},custom:{}};notify('本地自建课程或分组数据无效，请重新设置或导入备份。')}
 const required=groupsFor(selectedClass);if(Object.entries(required).some(([k,options])=>!['*','none',...options].includes(selectedGroups()[k]))){hasLegacyChoice=setupCompleted||hasLegacyChoice;setupCompleted=false}
-refreshAll();positionCapsule(activePage);updateTitle();if(!setupCompleted){setupCompleted=true;notify('当前无内置课表，可在关于 → 设置中导入备份或自行添加课程。')}
+refreshAll();positionCapsule(activePage);updateTitle();if(!setupCompleted){setupCompleted=true}

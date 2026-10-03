@@ -1,4 +1,4 @@
-name: Publish Android 3.2.1 Release
+name: Publish Android 3.2.2 Release
 
 on:
   push:
@@ -11,7 +11,7 @@ permissions:
   contents: write
 
 concurrency:
-  group: android-release-3.2.1
+  group: android-release-3.2.2
   cancel-in-progress: false
 
 jobs:
@@ -30,21 +30,21 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          RELEASE_TAG: android-v3.2.1
+          RELEASE_TAG: android-v3.2.2
         shell: bash
         run: |
           set -euo pipefail
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
             gh release upload "$RELEASE_TAG" \
-              downloads/Class-Timetable-3.2.1.apk \
+              downloads/Class-Timetable-3.2.2.apk \
               downloads/SHA256SUMS.txt --clobber
           else
             gh release create "$RELEASE_TAG" \
-              downloads/Class-Timetable-3.2.1.apk \
+              downloads/Class-Timetable-3.2.2.apk \
               downloads/SHA256SUMS.txt \
               --target "$GITHUB_SHA" \
-              --title "班级课表 · Android 3.2.1" \
-              --notes-file downloads/ANDROID-3.2.1-RELEASE.md \
+              --title "班级课表 · Android 3.2.2" \
+              --notes-file downloads/ANDROID-3.2.2-RELEASE.md \
               --draft
           fi
           gh release edit "$RELEASE_TAG" --draft=false --latest
