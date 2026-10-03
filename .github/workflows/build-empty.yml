@@ -1,4 +1,4 @@
-name: Build and publish optimized Release 3.1.18
+name: Check Android build
 on:
   push:
     branches: [main]
@@ -7,7 +7,7 @@ on:
       - .github/workflows/build-empty.yml
   workflow_dispatch:
 permissions:
-  contents: write
+  contents: read
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -26,35 +26,17 @@ jobs:
       - name: Compile Release and run checks
         working-directory: android
         run: bash gradlew assembleRelease testDebugUnitTest lintRelease --no-daemon
-      - name: Verify Release is not debuggable and contains no timetable
+      - name: Verify unsigned APK contains no bundled timetable
         run: |
-          mkdir public
-          cp android/app/build/outputs/apk/release/app-release.apk public/Class-Timetable-3.1.18-empty-release.apk
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging public/*.apk > /tmp/apk-info.txt
-          if grep -q 'application-debuggable' /tmp/apk-info.txt; then exit 1; fi
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify public/*.apk
           python - <<'PY'
-          import zipfile,json,pathlib,hashlib
-          p=pathlib.Path('public/Class-Timetable-3.1.18-empty-release.apk')
-          with zipfile.ZipFile(p) as z:
+          import zipfile,json
+          with zipfile.ZipFile('android/app/build/outputs/apk/release/app-release-unsigned.apk') as z:
               d=json.loads(z.read('assets/school-data.json'))
               assert not d['strings'] and not d['teacherProjects']
               assert all(not c['courses'] for c in d['classes'])
-          (p.parent/'SHA256SUMS.txt').write_text(hashlib.sha256(p.read_bytes()).hexdigest()+'  '+p.name+'\n')
           PY
       - uses: actions/upload-artifact@v4
         with:
-          name: timetable-optimized-release-3.1.18
-          path: public/*
+          name: android-unsigned-build-${{ github.sha }}
+          path: android/app/build/outputs/apk/release/app-release-unsigned.apk
           if-no-files-found: error
-      - name: Publish optimized APK
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-        run: |
-          cat > /tmp/notes.md <<'EOF'
-          无内置课表版 3.1.18。使用非调试 Release 构建，保留页面滑动与文字动画，减少页面位置变化导致的重组，共享并缓存文字模糊效果。
-          
-          APK 使用测试签名，无法保证覆盖旧版本；签名不匹配时，卸载前请先导出本机备份。尚未进行实机帧耗时测量。
-          EOF
-          gh release create empty-v3.1.18 public/* --target "$GITHUB_SHA" --title '班级课表 3.1.18 · Release 性能优化' --notes-file /tmp/notes.md --latest
