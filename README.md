@@ -11,3 +11,10 @@
 自动构建产物在 GitHub Actions 的 `timetable-empty-3.1.17` 中，包括网页 ZIP、可安装的调试签名 APK 和未签名 release APK。调试签名 APK 无法覆盖旧正式签名应用，迁移前先导出本机备份。
 
 第三方许可保留在工程中。
+
+## 在线访问与下载
+
+- 网页：https://baihuanxi552-design.github.io/GDCP-Class-Timetable/
+- 安卓安装包与网页离线包：https://github.com/baihuanxi552-design/GDCP-Class-Timetable/releases/tag/empty-v3.1.17
+
+安卓安装包使用调试签名，不能覆盖旧正式签名版本；卸载旧版前请先导出设备中的备份。

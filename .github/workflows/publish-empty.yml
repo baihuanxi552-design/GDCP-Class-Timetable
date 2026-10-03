@@ -1,0 +1,59 @@
+name: Publish empty web and Android 3.1.17
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/publish-empty.yml]
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: timetable-empty-3.1.17
+          run-id: 37094643180
+          github-token: ${{ github.token }}
+          path: built
+      - name: Verify and prepare public downloads
+        run: |
+          python - <<'PY'
+          import pathlib,zipfile,json,hashlib,shutil
+          p=pathlib.Path('built/android/app/build/outputs/apk/debug/app-debug.apk')
+          assert hashlib.sha256(p.read_bytes()).hexdigest()=='df3c99f865562f6dac7cfc4d013996203ebe0abccf26438ed160aa5ea99c5555'
+          with zipfile.ZipFile(p) as z:
+              data=json.loads(z.read('assets/school-data.json'))
+              assert not data['strings'] and not data['teacherProjects']
+              assert all(not c['courses'] for c in data['classes'])
+          with zipfile.ZipFile('built/timetable-web-empty.zip') as z:
+              raw=z.read('school-data.js').decode()
+              data=json.loads(raw.split('=',1)[1].strip().rstrip(';'))
+              assert not data['strings'] and not data['teacherProjects']
+              assert all(not c['courses'] for c in data['classes'])
+          out=pathlib.Path('public');out.mkdir()
+          shutil.copyfile(p,out/'Class-Timetable-3.1.17-empty.apk')
+          shutil.copyfile('built/timetable-web-empty.zip',out/'timetable-web-empty-3.1.17.zip')
+          (out/'SHA256SUMS.txt').write_text(''.join(hashlib.sha256(f.read_bytes()).hexdigest()+'  '+f.name+'\n' for f in sorted(out.iterdir())))
+          PY
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          cat > release-notes.md <<'EOF'
+          网页和 Android 3.1.17 无内置课表版。支持完整备份导入和自建课程。
+          
+          网页：https://baihuanxi552-design.github.io/GDCP-Class-Timetable/
+          
+          下载 Class-Timetable-3.1.17-empty.apk 安装。该 APK 使用调试签名，无法覆盖旧正式签名版本；卸载旧版前请在设备内导出备份。
+          
+          网页离线包和 SHA256SUMS.txt 同页提供。课表备份未发布到 GitHub。
+          EOF
+          if gh release view empty-v3.1.17 >/dev/null 2>&1; then
+            gh release upload empty-v3.1.17 public/* --clobber
+            gh release edit empty-v3.1.17 --notes-file release-notes.md --latest
+          else
+            gh release create empty-v3.1.17 public/* --target "$GITHUB_SHA" --title '班级课表 3.1.17 · 无内置数据版' --notes-file release-notes.md --latest
+          fi
