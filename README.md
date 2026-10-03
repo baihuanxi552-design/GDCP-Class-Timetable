@@ -15,6 +15,10 @@
 ## 在线访问与下载
 
 - 网页：https://baihuanxi552-design.github.io/GDCP-Class-Timetable/
-- 安卓安装包与网页离线包：https://github.com/baihuanxi552-design/GDCP-Class-Timetable/releases/tag/empty-v3.1.17
+- 安卓安装包与网页离线包：https://github.com/baihuanxi552-design/GDCP-Class-Timetable/releases/tag/empty-v3.1.18
 
 安卓安装包使用调试签名，不能覆盖旧正式签名版本；卸载旧版前请先导出设备中的备份。
+
+## Android 3.1.18 性能优化
+
+APK 采用非调试 Release 构建，减少切换页面时的重组，复用文字模糊效果。保留原滑动时长和动画风格。使用测试签名；覆盖安装失败时，卸载前先导出备份。编译、单元测试、Lint 和 APK 调试标志检查已通过，实机帧耗时待验证。
