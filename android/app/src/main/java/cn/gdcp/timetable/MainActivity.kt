@@ -762,7 +762,7 @@ private fun Modifier.blockMotionInput()=pointerInput(Unit) {
             Image(painterResource(R.drawable.ic_launcher),contentDescription="应用图标",modifier=Modifier.size(96.dp))
             MotionText("班级课表",fontSize=32.sp,fontWeight=FontWeight.Bold,modifier=Modifier.padding(top=22.dp))
             MotionText("每一周，都有清晰的安排",fontSize=15.sp,color=colors.onSurfaceVariantSummary,modifier=Modifier.padding(top=10.dp))
-            MotionText("版本 3.1.18 · Compose Miuix",fontSize=14.sp,color=colors.onSurfaceVariantSummary,modifier=Modifier.padding(top=18.dp))
+            MotionText("版本 3.2.0 · Compose Miuix",fontSize=14.sp,color=colors.onSurfaceVariantSummary,modifier=Modifier.padding(top=18.dp))
         } }
         item { MotionText("项目",fontSize=14.sp,color=colors.onSurfaceVariantSummary);Spacer(Modifier.height(10.dp));Card(insideMargin=PaddingValues(20.dp)) {
             MotionText("广交班级课表",fontSize=20.sp,fontWeight=FontWeight.SemiBold);Spacer(Modifier.height(14.dp));MotionText("全校 547 个班级\n2026—2027 · 第一学期",fontSize=14.sp,lineHeight=23.sp);Spacer(Modifier.height(22.dp))
@@ -825,6 +825,7 @@ private fun Modifier.blockMotionInput()=pointerInput(Unit) {
     val importer=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if(uri!=null) try {val bytes=context.contentResolver.openInputStream(uri)?.use {it.readBytesLimited()}?:error("无法读取文件");val text=bytes.toString(Charsets.UTF_8);BackupData.validate(text);pending=text;notice="备份有效，确认后恢复并替换当前本地设置和自建课程。"}catch(e:Exception){notice="导入失败：${e.message}"}
     }
+    val jwImporter=rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {onRestored()}
     BackHandler(enabled=active) {onClose()}
     val scroll=rememberScrollState()
     val haze=remember {HazeState()}
@@ -836,6 +837,9 @@ private fun Modifier.blockMotionInput()=pointerInput(Unit) {
         Card(insideMargin=PaddingValues(20.dp),onClick=onEdit,modifier=Modifier.semantics { role=Role.Button;contentDescription="更改班级、校区和分组" }) {
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {Column(Modifier.weight(1f)) {MotionText("更改课表",fontSize=19.sp,fontWeight=FontWeight.SemiBold);MotionText(SchoolData.title()+" · "+SchoolData.CAMPUSES[SchoolData.campus],fontSize=13.sp,color=colors.onSurfaceVariantSummary,modifier=Modifier.padding(top=8.dp))};MotionText("›",fontSize=28.sp,color=colors.onSurfaceVariantSummary)}
         }
+        MotionText(if(PersonalImport.active(context)) "正在使用个人教务课表" else "教务系统",fontSize=14.sp,color=colors.onSurfaceVariantSummary)
+        Button(onClick={jwImporter.launch(Intent(context,JwImportActivity::class.java))},modifier=Modifier.fillMaxWidth()) {MotionText("登录教务系统并解析个人课表")}
+        if(PersonalImport.active(context)) TextButton("切回班级课表",{PersonalImport.useClass(context);onRestored()},Modifier.fillMaxWidth())
         MotionText("备份",fontSize=14.sp,color=colors.onSurfaceVariantSummary,modifier=Modifier.padding(top=16.dp))
         Card(insideMargin=PaddingValues(0.dp)) {
             BackupRow("保存到本地",false) {export.launch("广交课表备份-${LocalDate.now(ScheduleData.ZONE)}.json")}

@@ -15,10 +15,20 @@
 ## 在线访问与下载
 
 - 网页：https://baihuanxi552-design.github.io/GDCP-Class-Timetable/
-- 安卓安装包与网页离线包：https://github.com/baihuanxi552-design/GDCP-Class-Timetable/releases/tag/empty-v3.1.18
+- 安卓安装包与网页离线包：https://github.com/baihuanxi552-design/GDCP-Class-Timetable/releases/tag/android-v3.2.0
 
 安卓安装包使用调试签名，不能覆盖旧正式签名版本；卸载旧版前请先导出设备中的备份。
 
 ## Android 3.1.18 性能优化
 
 APK 采用非调试 Release 构建，减少切换页面时的重组，复用文字模糊效果。保留原滑动时长和动画风格。使用测试签名；覆盖安装失败时，卸载前先导出备份。编译、单元测试、Lint 和 APK 调试标志检查已通过，实机帧耗时待验证。
+
+## 教务系统个人课表解析（3.2.0）
+
+关于 → 设置 → 教务系统。安卓在内置页面登录后打开个人课表，选择2026—2027第一学期及全部周次，解析预览后确认导入。网页受跨域限制，登录学校网站后使用解析书签导出JSON，或保存完整个人课表HTML，在本站导入。网页和安卓均只保存课程数据，不上传账号、密码、原始页面或会话。数据离线保存，教务调整后需重新导入。保留自建课程和校区作息；个人课表不按班级分组再次过滤。原有备份格式不包含独立个人导入数据，请保留导出的JSON。
+
+[网页版](https://baihuanxi552-design.github.io/GDCP-Class-Timetable/) · [Android 3.2.0 Releases](https://github.com/baihuanxi552-design/GDCP-Class-Timetable/releases/tag/android-v3.2.0)
+
+已核对离线教务页面解析、220个时段／第7周16个时段、网页缓存恢复、Release构建与签名。新的学校登录会话、手机浏览器书签支持及安卓实机登录待用户测试。支持当前学期与第1—20周；其他学期明确拒绝导入。
+
+签名说明：3.2.0 使用原正式签名，可覆盖原正式签名版本。3.1.17／3.1.18 调试签名版本不能直接覆盖安装；请先导出备份，另行保存个人导入 JSON，再卸载后安装。

@@ -25,9 +25,10 @@ public final class SchoolData {
   try {
    int chosen=Math.max(0,Math.min(entries.length()-1,index));JSONArray rows=entries.getJSONObject(chosen).getJSONArray("courses");ScheduleData.Course[] courses=new ScheduleData.Course[rows.length()];
    for(int i=0;i<rows.length();i++){JSONArray r=rows.getJSONArray(i);int bits=r.getInt(5);List<Integer> weeks=new ArrayList<>();for(int w=1;w<=20;w++)if((bits&(1<<(w-1)))!=0)weeks.add(w);int[] ws=new int[weeks.size()];for(int w=0;w<ws.length;w++)ws[w]=weeks.get(w);int first=r.getInt(4);courses[i]=new ScheduleData.Course(strings.getString(r.getInt(0)),strings.getString(r.getInt(1)),strings.getString(r.getInt(2)),r.getInt(3),first,first+1,ws);}
-   selected=chosen;campus=Math.max(0,Math.min(3,campusIndex));ScheduleData.COURSES=personalize(context,chosen,courses);if(persist)context.getSharedPreferences("school",Context.MODE_MULTI_PROCESS).edit().putInt("class",selected).putInt("campus",campus).putString("className",NAMES.get(selected)).commit();
+   selected=chosen;campus=Math.max(0,Math.min(3,campusIndex));ScheduleData.COURSES=PersonalImport.active(context)?combineImported(context,chosen,courses):personalize(context,chosen,courses);if(persist)context.getSharedPreferences("school",Context.MODE_MULTI_PROCESS).edit().putInt("class",selected).putInt("campus",campus).putString("className",NAMES.get(selected)).commit();
   } catch(JSONException e){throw new IllegalStateException("课表数据格式错误",e);}
  }
+ private static ScheduleData.Course[] combineImported(Context context,int chosen,ScheduleData.Course[] original){ScheduleData.Course[] imported=PersonalImport.apply(context,original),custom=personalize(context,chosen,new ScheduleData.Course[0]);ScheduleData.Course[] all=Arrays.copyOf(imported,imported.length+custom.length);System.arraycopy(custom,0,all,imported.length,custom.length);return all;}
  public static boolean configured(Context context){
   if(!hadCachedChoice||!context.getSharedPreferences("school",Context.MODE_MULTI_PROCESS).getBoolean("setupCompleted",false))return false;
   try{JSONObject saved=new JSONObject(groupChoices(context,selected));for(Map.Entry<String,List<String>> e:groups(selected).entrySet()){String value=saved.optString(e.getKey(),"");if(!value.equals("*")&&!value.equals("none")&&!e.getValue().contains(value))return false;}return true;}catch(Exception e){return false;}
