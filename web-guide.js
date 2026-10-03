@@ -1,0 +1,28 @@
+document.addEventListener('DOMContentLoaded',()=>{
+/* Web onboarding. HyperCeiler shader attribution: GUIDE-NOTICE.md. */
+(()=>{
+const KEY='timetable.guide.v1',reduce=matchMedia('(prefers-reduced-motion: reduce)');
+const root=document.createElement('dialog');root.id='webGuide';root.setAttribute('aria-label','个人课表欢迎引导');root.innerHTML=`<section class="guide-panel guide-welcome"><div class="guide-flow"><canvas aria-hidden="true"></canvas></div><div class="guide-brand"><img src="icon.svg" alt=""><h1 tabindex="-1">个人课表</h1></div><button class="guide-next" aria-label="开始设置">→</button></section><section class="guide-panel guide-setup" hidden></section><section class="guide-panel guide-complete" hidden><div class="guide-flow"><canvas aria-hidden="true"></canvas></div><div class="guide-brand"><img src="icon.svg" alt=""><h1 tabindex="-1">个人课表</h1><p>设置完毕</p></div><button class="guide-start">开始使用</button></section><p class="guide-notice" role="status"></p>`;document.body.append(root);
+const panels=[...root.querySelectorAll('.guide-panel')],importer=PersonalImportUI.dialog;let step=0,busy=false,flow=null,active=false;
+const notice=t=>root.querySelector('.guide-notice').textContent=t;
+function store(state){try{localStorage.setItem(KEY,JSON.stringify({version:1,state}));return true}catch{notice('本地存储不可用，引导状态无法保存。请允许网站存储后重试。');return false}}
+function paint(n){panels.forEach((p,i)=>{p.hidden=i!==n;p.inert=i!==n;p.style.cssText=''});step=n;flow?.destroy();flow=n===1?null:new GuideFlow(panels[n].querySelector('canvas'),n===2);requestAnimationFrame(()=>panels[n].querySelector('h1,h2')?.focus({preventScroll:true}))}
+async function animate(el,frames,duration){if(reduce.matches)return;const a=el.animate(frames,{duration,fill:'both',easing:'cubic-bezier(.22,.75,.2,1)'});try{await a.finished}catch{}finally{a.cancel()}}
+function setup(){panels[1].append(importer);importer.classList.add('guide-import');importer.setAttribute('open','');importer.querySelector('#jwCampus').value=String(selectedCampus);importer.dispatchEvent(new Event('campusrefresh'));importer.querySelector('h2').tabIndex=-1}
+function restore(){importer.removeAttribute('open');importer.classList.remove('guide-import');document.body.append(importer)}
+function historyStep(n){history.pushState({...history.state,webGuide:n},'')}
+async function go(n,morph=false,push=true){if(busy||!active||n===step)return;busy=true;const old=panels[step],next=panels[n];flow?.freeze();if(n===1)setup();next.hidden=false;next.inert=true;let animations=[];
+if(morph){const r=root.getBoundingClientRect(),b=root.querySelector('.guide-next').getBoundingClientRect();animations=[animate(next,[{clipPath:`inset(${b.top-r.top}px ${r.right-b.right}px ${r.bottom-b.bottom}px ${b.left-r.left}px round 34px)`,background:'#51203f'},{clipPath:'inset(0px round 28px)',background:'var(--page)'}],440),animate(importer,[{opacity:0,offset:0},{opacity:0,offset:.5},{opacity:1}],440),animate(old,[{transform:'scale(1)',borderRadius:'0px'},{transform:'scale(.94)',borderRadius:'28px',filter:'blur(8px)'}],440)]}
+else{animations=[animate(next,[{transform:`translateX(${n>step?'100%':'-20%'})`,borderRadius:'28px',boxShadow:'0 0 70px #5557'},{transform:'translateX(0)',borderRadius:'28px',boxShadow:'0 0 70px #5557'}],500),animate(old,[{transform:'scale(1)',filter:'blur(0)'},{transform:n>step?'scale(.94)':'translateX(100%)',filter:'blur(12px)',borderRadius:'28px'}],500)]}
+await Promise.all(animations);paint(n);busy=false;if(push)historyStep(n)}
+function start(){if(active)return;document.querySelectorAll('dialog[open]').forEach(d=>d.close());document.body.classList.remove('route-open');active=true;store('pending');root.showModal();setup();paint(0);historyStep(0)}
+async function complete(){if(busy)return;const campus=Number(importer.querySelector('#jwCampus').value);try{const prefs=JSON.parse(localStorage.getItem(PREFS_KEY)||'{}');localStorage.setItem(PREFS_KEY,JSON.stringify({...prefs,version:1,className:className(),campus}));selectedCampus=campus;refreshAll()}catch{notice('校区未保存，请允许本地存储后重试。');return}await go(2)}
+async function finish(){if(busy||!store('completed'))return;busy=true;flow?.freeze();const pages=document.getElementById('pages');await Promise.all([animate(panels[2],[{opacity:1,transform:'scale(1)'},{opacity:0,transform:'scale(.94)'}],480),animate(pages,[{opacity:0,transform:'scale(.94)'},{opacity:1,transform:'scale(1)'}],480)]);flow?.destroy();flow=null;root.close();restore();active=false;busy=false;history.replaceState({...history.state,webGuide:undefined},'');document.getElementById('timetablePage').querySelector('h1')?.focus({preventScroll:true})}
+window.WebGuide={get active(){return active},start,complete,back(){if(!busy&&step>0)go(step-1,false,false)}};
+root.querySelector('.guide-next').onclick=()=>go(1,true);root.querySelector('.guide-start').onclick=finish;root.addEventListener('cancel',e=>{e.preventDefault();WebGuide.back()});window.addEventListener('popstate',e=>{if(active&&!busy)go(Number.isInteger(e.state?.webGuide)?e.state.webGuide:0,false,false)});
+const replay=document.createElement('button');replay.className='action-row';replay.textContent='重新引导  ›';replay.onclick=start;document.getElementById('jwOpen').parentElement.append(replay);
+let saved=null,existing=false;try{saved=JSON.parse(localStorage.getItem(KEY)||'null');existing=!!(window.GDCP_PERSONAL||localStorage.getItem(PREFS_KEY)||localStorage.getItem('timetable.onboarding.v1')==='done')}catch{}
+if(saved?.state==='pending'||(!saved&& !existing))start();else if(!saved&&existing)store('completed');
+})();
+
+});
