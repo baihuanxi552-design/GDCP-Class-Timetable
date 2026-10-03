@@ -1,0 +1,25 @@
+name: Remove archived previous uploads
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/remove-old-uploads.yml]
+  workflow_dispatch:
+permissions:
+  actions: write
+  contents: read
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete previously archived workflow runs and their artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for run in 37028322958 37028319647 37026781725 37025670103 37021036401 37020278657 37020187239 37020146669 37019171150 37017636919 37017070326 37016195457 37014930296 37013830069 36981579841 36979130376 36968179863 36967692782; do
+            if gh api "repos/$GH_REPO/actions/runs/$run" >/dev/null 2>&1; then
+              gh api --method DELETE "repos/$GH_REPO/actions/runs/$run"
+            fi
+          done
