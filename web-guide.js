@@ -2,6 +2,7 @@ document.addEventListener('DOMContentLoaded',()=>{
 /* Web onboarding. HyperCeiler shader attribution: GUIDE-NOTICE.md. */
 (()=>{
 const KEY='timetable.guide.v1',reduce=matchMedia('(prefers-reduced-motion: reduce)');
+const incoming=location.hash.startsWith('#jwimport=')?location.hash.slice(10):null;if(incoming!==null)history.replaceState(history.state,'',location.pathname+location.search);
 const root=document.createElement('dialog');root.id='webGuide';root.setAttribute('aria-label','个人课表欢迎引导');root.innerHTML=`<section class="guide-panel guide-welcome"><div class="guide-flow"><canvas aria-hidden="true"></canvas></div><div class="guide-brand"><img src="icon.svg" alt=""><h1 tabindex="-1">个人课表</h1></div><button class="guide-next" aria-label="开始设置">→</button></section><section class="guide-panel guide-setup" hidden></section><section class="guide-panel guide-complete" hidden><div class="guide-flow"><canvas aria-hidden="true"></canvas></div><div class="guide-brand"><img src="icon.svg" alt=""><h1 tabindex="-1">个人课表</h1><p>设置完毕</p></div><button class="guide-start">开始使用</button></section><p class="guide-notice" role="status"></p>`;document.body.append(root);
 const panels=[...root.querySelectorAll('.guide-panel')],importer=PersonalImportUI.dialog;let step=0,busy=false,flow=null,active=false;
 const notice=t=>root.querySelector('.guide-notice').textContent=t;
@@ -18,11 +19,13 @@ await Promise.all(animations);paint(n);busy=false;if(push)historyStep(n)}
 function start(){if(active)return;document.querySelectorAll('dialog[open]').forEach(d=>d.close());document.body.classList.remove('route-open');active=true;store('pending');root.showModal();setup();paint(0);historyStep(0)}
 async function complete(){if(busy)return;const campus=Number(importer.querySelector('#jwCampus').value);try{const prefs=JSON.parse(localStorage.getItem(PREFS_KEY)||'{}');localStorage.setItem(PREFS_KEY,JSON.stringify({...prefs,version:1,className:className(),campus}));selectedCampus=campus;refreshAll()}catch{notice('校区未保存，请允许本地存储后重试。');return}await go(2)}
 async function finish(){if(busy||!store('completed'))return;busy=true;flow?.freeze();const pages=document.getElementById('pages');await Promise.all([animate(panels[2],[{opacity:1,transform:'scale(1)'},{opacity:0,transform:'scale(.94)'}],480),animate(pages,[{opacity:0,transform:'scale(.94)'},{opacity:1,transform:'scale(1)'}],480)]);flow?.destroy();flow=null;root.close();restore();active=false;busy=false;history.replaceState({...history.state,webGuide:undefined},'');document.getElementById('timetablePage').querySelector('h1')?.focus({preventScroll:true})}
-window.WebGuide={get active(){return active},start,complete,back(){if(!busy&&step>0)go(step-1,false,false)}};
+window.WebGuide={get active(){return active},start,complete,async showImport(){await go(1,true)},back(){if(!busy&&step>0)go(step-1,false,false)}};
 root.querySelector('.guide-next').onclick=()=>go(1,true);root.querySelector('.guide-start').onclick=finish;root.addEventListener('cancel',e=>{e.preventDefault();WebGuide.back()});window.addEventListener('popstate',e=>{if(active&&!busy)go(Number.isInteger(e.state?.webGuide)?e.state.webGuide:0,false,false)});
 const replay=document.createElement('button');replay.className='action-row';replay.textContent='重新引导  ›';replay.onclick=start;document.getElementById('jwOpen').parentElement.append(replay);
 let saved=null,existing=false;try{saved=JSON.parse(localStorage.getItem(KEY)||'null');existing=!!(window.GDCP_PERSONAL||localStorage.getItem(PREFS_KEY)||localStorage.getItem('timetable.onboarding.v1')==='done')}catch{}
 if(saved?.state==='pending'||(!saved&& !existing))start();else if(!saved&&existing)store('completed');
+if(incoming!==null){const payload=incoming;(async()=>{try{const data=GDCPParser.validate(JSON.parse(decodeURIComponent(payload)));if(active)await WebGuide.showImport();else PersonalImportUI.open();PersonalImportUI.accept(data)}catch(e){notify('课表未导入：'+e.message)}})()}
+
 })();
 
 });
