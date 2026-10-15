@@ -55,7 +55,7 @@ public final class JwRefresh {
  private void inspect(int count){
   if(!current()||parsing)return;
   if(!allowed(web.getUrl())){if(count<80){handler.postDelayed(()->inspect(count+1),400);return;}fail("未能读取教务页面，原课表已保留。",false);return;}
-  String state="(function check(d){try{if(d.readyState!=='complete')return 'waiting';if(d.querySelector('input[type=password]'))return 'login';if(d.querySelector('#timetable .item-box .tch-name,#timetable .kbcontent'))return 'ready';for(const f of d.querySelectorAll('iframe,frame')){try{const s=f.contentDocument&&check(f.contentDocument);if(s&&s!=='waiting')return s}catch(e){}}}catch(e){}return 'waiting';})(document)";
+  String state="(function check(d){try{if(d.readyState!=='complete')return 'waiting';if(d.querySelector('input[type=password]'))return 'login';if(d.querySelector('#week')&&d.querySelector('[name=kbjcmsid].layui-this'))return 'ready';if(d.querySelector('#timetable .item-box .tch-name,#timetable .kbcontent font'))return 'ready';for(const f of d.querySelectorAll('iframe,frame')){try{const s=f.contentDocument&&check(f.contentDocument);if(s&&s!=='waiting')return s}catch(e){}}}catch(e){}return 'waiting';})(document)";
   web.evaluateJavascript(state,value->{
    if(!current())return;
    if("\"login\"".equals(value)){fail("",true);return;}
