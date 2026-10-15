@@ -8,7 +8,8 @@
 
 - 在线使用：<https://baihuanxi552-design.github.io/GDCP-Class-Timetable/>
 - Android 下载：<https://github.com/baihuanxi552-design/GDCP-Class-Timetable/releases/latest>
-- 当前版本：网页 3.3.2；Android 3.2.5
+- 当前已发布版本：网页 3.3.2；Android 3.2.5
+- Android 源码版本：3.2.6，新增可选的前台自动检查和手动刷新；需使用原正式签名打包后覆盖安装。
 
 ## 功能
 
@@ -18,7 +19,7 @@
 - 深色模式、系统字体缩放和减少动态效果支持
 - 网页数据保存在浏览器本地；Android 数据保存在应用私有存储
 
-教务系统的页面结构和课表可能变化。解析失败、学期不匹配或登录失效时，不应使用不完整结果覆盖已有数据。计划中的自动更新设计见 [android/AUTO-SYNC-PROPOSAL.md](android/AUTO-SYNC-PROPOSAL.md)。
+教务系统的页面结构和课表可能变化。解析失败、学期不匹配或登录失效时，不应使用不完整结果覆盖已有数据。Android 开启自动更新后可在前台检查变化，也可在设置立即刷新。登录过期时需重新登录。具体行为见 [android/JW-REFRESH.md](android/JW-REFRESH.md)。
 
 ## 隐私与数据
 
