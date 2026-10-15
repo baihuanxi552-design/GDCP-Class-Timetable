@@ -41,6 +41,12 @@ public class JwCourseDiffTest {
   assertFalse(JwCourseDiff.due(true,true,true,true,0,10000,true));
   assertTrue(JwCourseDiff.due(true,true,true,false,0,10000,false));
  }
+ @Test public void pendingConfirmationExpiresAndRejectsClockRollback(){
+  assertTrue(JwCourseDiff.pendingFresh(1000,2000));
+  assertFalse(JwCourseDiff.pendingFresh(1000,86401001));
+  assertFalse(JwCourseDiff.pendingFresh(2000,1000));
+  assertFalse(JwCourseDiff.pendingFresh(0,1000));
+ }
  @Test public void automaticRefreshThrottlesAndManualBypassesOnlyInterval(){
   assertFalse(JwCourseDiff.due(true,true,true,false,10000,20000,false));
   assertTrue(JwCourseDiff.due(true,true,true,false,10000,3610000,false));

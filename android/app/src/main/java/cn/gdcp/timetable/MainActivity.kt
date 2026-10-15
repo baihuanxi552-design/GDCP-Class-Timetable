@@ -895,7 +895,7 @@ private fun Modifier.blockMotionInput()=pointerInput(Unit) {
         if(uri!=null) try {val text=BackupData.exportData(context);context.contentResolver.openOutputStream(uri)?.use {it.write(text.toByteArray(Charsets.UTF_8))}?:error("无法写入文件");notice="备份已保存"}catch(e:Exception){notice="保存失败：${e.message}"}
     }
     val importer=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if(uri!=null) try {val bytes=context.contentResolver.openInputStream(uri)?.use {it.readBytesLimited()}?:error("无法读取文件");val text=bytes.toString(Charsets.UTF_8);BackupData.validate(text);pending=text;notice="备份有效，确认后恢复并替换当前本地设置和自建课程。"}catch(e:Exception){notice="导入失败：${e.message}"}
+        if(uri!=null) try {val bytes=context.contentResolver.openInputStream(uri)?.use {it.readBytesLimited()}?:error("无法读取文件");val text=bytes.toString(Charsets.UTF_8);BackupData.validate(text);pending=text;notice="备份有效，确认后恢复并替换备份中包含的课表、本地设置和自建课程；自动更新将关闭。"}catch(e:Exception){notice="导入失败：${e.message}"}
     }
     val jwImporter=rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {onRestored()}
     BackHandler(enabled=active) {onClose()}
