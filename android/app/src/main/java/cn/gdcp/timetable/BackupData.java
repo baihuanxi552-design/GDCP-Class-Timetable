@@ -15,7 +15,7 @@ public final class BackupData {
   JSONObject settings=new JSONObject();settings.put("className",SchoolData.NAMES.get(SchoolData.selected));settings.put("campus",SchoolData.campus);
   JSONObject groups=new JSONObject(),custom=new JSONObject();
   for(String name:SchoolData.NAMES){String g=p.getString("groups:"+name,null),x=p.getString("custom:"+name,null);if(g!=null)groups.put(name,new JSONObject(g));if(x!=null)custom.put(name,new JSONArray(x));}
-  JSONObject root=new JSONObject();root.put("format","gdcp-timetable-backup");root.put("version",1);root.put("semester","2026-2027-1");root.put("settings",settings);root.put("groups",groups);root.put("custom",custom);root.put("catalog",SchoolData.catalog());return root.toString(2);
+  JSONObject root=new JSONObject();root.put("format","gdcp-timetable-backup");root.put("version",1);root.put("semester","2026-2027-1");root.put("settings",settings);root.put("groups",groups);root.put("custom",custom);root.put("catalog",SchoolData.catalog());String personal=p.getString("jwPersonal",null);if(personal!=null){root.put("personalImport",PersonalImport.validate(personal));root.put("personalImportActive",PersonalImport.active(c));}return root.toString(2);
  }
  public static JSONObject validate(String text)throws JSONException {
   if(text.length()>4*1024*1024)throw new IllegalArgumentException("备份文件过大");
@@ -26,6 +26,7 @@ public final class BackupData {
   for(Iterator<String> it=groups.keys();it.hasNext();){String name=it.next();known(name,names);JSONObject choices=groups.getJSONObject(name);for(Iterator<String> keys=choices.keys();keys.hasNext();){String key=keys.next();if(key.length()>200||!(choices.get(key) instanceof String)||choices.getString(key).length()>500)throw new IllegalArgumentException("分组选项无效");}}
   int total=0;
   for(Iterator<String> it=custom.keys();it.hasNext();){String name=it.next();known(name,names);JSONArray courses=custom.getJSONArray(name);total+=courses.length();if(total>10000)throw new IllegalArgumentException("自建课程数量过多");for(int i=0;i<courses.length();i++){JSONObject row=courses.getJSONObject(i);String n=row.getString("name");if(n.length()>500||row.getString("teacher").length()>500||row.getString("room").length()>500)throw new IllegalArgumentException("课程文字过长");CourseInput.validate(n,row.getInt("day"),row.getInt("first"),row.getInt("last"));JSONArray weeks=row.getJSONArray("weeks");if(weeks.length()<1||weeks.length()>20)throw new IllegalArgumentException("周次无效");Set<Integer> seen=new HashSet<>();for(int j=0;j<weeks.length();j++){int w=weeks.getInt(j);if(w<1||w>20||!seen.add(w))throw new IllegalArgumentException("周次无效或重复");}}}
+  if(root.has("personalImport")){PersonalImport.validate(root.getJSONObject("personalImport").toString());if(!(root.get("personalImportActive") instanceof Boolean))throw new IllegalArgumentException("个人课表状态无效");}
   return root;
  }
  private static void known(String name,Set<String> names){if(!names.contains(name))throw new IllegalArgumentException("备份包含未识别的课表");}
@@ -36,6 +37,8 @@ public final class BackupData {
   for(Iterator<String> it=groups.keys();it.hasNext();){String name=it.next();edit.putString("groups:"+name,groups.getJSONObject(name).toString());}
   for(Iterator<String> it=custom.keys();it.hasNext();){String name=it.next();edit.putString("custom:"+name,custom.getJSONArray(name).toString());}
   JSONObject data=root.optJSONObject("catalog");if(data!=null)edit.putString("catalog",data.toString());String name=settings.getString("className");edit.putString("className",name).putInt("class",SchoolData.NAMES.indexOf(name)).putInt("campus",settings.getInt("campus")).putBoolean("setupCompleted",true);
-  if(!edit.commit())throw new IllegalStateException("无法保存恢复数据");SchoolData.invalidate();SchoolData.initialize(c);SchoolData.hadCachedChoice=true;SchoolData.reload(c);
+  if(root.has("personalImport")){String previous=p.getString("jwPersonal",null);if(previous!=null)edit.putString("jwPreviousPersonal",previous);edit.putString("jwPersonal",root.getJSONObject("personalImport").toString()).putBoolean("jwActive",root.getBoolean("personalImportActive"));}
+  edit.putBoolean("jwSyncEnabled",false).putLong("jwSyncGeneration",JwSession.generation(c)+1).remove("jwSyncPending").remove("jwSyncPendingBase").remove("jwSyncPendingAt");
+  if(!edit.commit())throw new IllegalStateException("无法保存恢复数据");JwSession.forget(c);SchoolData.invalidate();SchoolData.initialize(c);SchoolData.hadCachedChoice=true;SchoolData.reload(c);
  }
 }

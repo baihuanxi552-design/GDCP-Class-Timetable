@@ -67,7 +67,7 @@
   if(term!=='2026-2027-1')throw Error('请选择2026—2027第一学期');
   const mode=home.querySelector('[name="kbjcmsid"].layui-this')?.getAttribute('data-value');if(!mode)throw Error('未识别首页节次模式，请手动选择“全部”后重试');
   const url=new URL('/jsxsd/framework/mainV_index_loadkb.htmlx',home.location.href);url.search=new URLSearchParams({rq:'all',sjmsValue:mode,xnxqid:term,xswk:'false'}).toString();
-  const response=await home.defaultView.fetch(url.href,{credentials:'same-origin'});if(!response.ok)throw Error('全部周课表读取失败');
+  const response=await home.defaultView.fetch(url.href,{credentials:'same-origin',cache:'no-store'});if(!response.ok)throw Error('全部周课表读取失败');if(response.url&&new URL(response.url).origin!==url.origin)throw Error('登录状态已失效，请重新登录');
   const bytes=await response.arrayBuffer(),text=new TextDecoder(/gb/i.test(response.headers.get('content-type')||'')?'gb18030':'utf-8').decode(bytes);
   return parse(new DOMParser().parseFromString(text.replace(/\s(?:src|srcset|href)\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi,''),'text/html'));
  }

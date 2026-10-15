@@ -21,6 +21,8 @@ Android APK 内的归属文本位于 `android/app/src/main/assets/THIRD_PARTY_NO
 | 组件 | 版本 | 许可证 |
 | --- | --- | --- |
 | JUnit 4 | 4.13.2 | Eclipse Public License 1.0 |
+| JSON-java（JVM 测试用 org.json 实现） | 20240303 | Public Domain；[上游许可](https://github.com/stleary/JSON-java/blob/20240303/LICENSE) |
+| AndroidX Test Runner / JUnit extension | 1.6.2 / 1.2.1 | Apache-2.0 |
 | Hamcrest（JUnit 的传递依赖） | 依赖解析版本 | BSD 3-Clause |
 
 依赖版本的最终权威来源是 `android/build.gradle.kts`、`android/app/build.gradle.kts` 和 Gradle 解析结果。更新依赖时应同步核对并更新本文件。

@@ -84,6 +84,13 @@ import top.yukonga.miuix.kmp.theme.*
 import top.yukonga.miuix.kmp.utils.PressFeedbackType
 
 class MainActivity : ComponentActivity() {
+    private val jwRefresh by lazy {JwRefresh(this)}
+    private val refreshHandler=android.os.Handler(android.os.Looper.getMainLooper())
+    fun refreshPersonalTimetable() {jwRefresh.start(true)}
+    fun stopTimetableRefresh() {jwRefresh.cancel()}
+    fun confirmTimetableRefresh() {jwRefresh.confirmPending()}
+    fun dismissTimetableRefresh() {jwRefresh.dismissPending()}
+    fun restorePreviousTimetable() {jwRefresh.restorePrevious()}
     private var currentDate by mutableStateOf(LocalDate.now(ScheduleData.ZONE))
     private var target by mutableStateOf<Triple<String, Int, Long>?>(null)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -107,7 +114,11 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
-    override fun onResume() { super.onResume();currentDate = LocalDate.now(ScheduleData.ZONE);BaseWidgetProvider.updateAll(this) }
+    override fun onResume() {
+        super.onResume();currentDate=LocalDate.now(ScheduleData.ZONE);BaseWidgetProvider.updateAll(this)
+        refreshHandler.postDelayed({if(!isFinishing && !isDestroyed) jwRefresh.start(false)},700)
+    }
+    override fun onPause() {refreshHandler.removeCallbacksAndMessages(null);jwRefresh.cancel();super.onPause()}
     override fun onNewIntent(intent: Intent) { super.onNewIntent(intent);setIntent(intent);readTarget(intent) }
     private fun readTarget(intent: Intent) { intent.getStringExtra("widget_date")?.let { target = Triple(it, intent.getIntExtra("widget_course", -1), System.nanoTime()) } }
 }
@@ -163,6 +174,14 @@ private fun weekRanges(weeks: IntArray): String { val ranges= mutableListOf<Stri
     }
     var customShown by rememberSaveable { mutableStateOf(false) }
     var courseRevision by remember { mutableIntStateOf(0) }
+    DisposableEffect(context) {
+        val prefs=JwSession.prefs(context)
+        val listener=android.content.SharedPreferences.OnSharedPreferenceChangeListener {_,key->
+            if(key=="jwPersonal" || key=="jwActive") courseRevision++
+        }
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+        onDispose {prefs.unregisterOnSharedPreferenceChangeListener(listener)}
+    }
     var settingsPage by rememberSaveable { mutableStateOf(false) }
     var page by rememberSaveable { mutableIntStateOf(0) }
     val courseScroll=rememberLazyListState()
@@ -337,7 +356,7 @@ private fun weekRanges(weeks: IntArray): String { val ranges= mutableListOf<Stri
                     }
                 }
             }
-            item { Column(Modifier.padding(6.dp)) { MotionText("课表说明",fontWeight=FontWeight.SemiBold,fontSize=14.sp);MotionText("课程来自你的个人教务课表或本机自建课程。体育课以实际个人选课为准。\n校区作息按学校时间表配置。最新调整以教务系统为准，调整后请重新导入。",fontSize=12.sp,color=colors.onSurfaceVariantSummary,modifier=Modifier.padding(top=8.dp)) } }
+            item { Column(Modifier.padding(6.dp)) { MotionText("课表说明",fontWeight=FontWeight.SemiBold,fontSize=14.sp);MotionText("课程来自你的个人教务课表或本机自建课程。体育课以实际个人选课为准。\n校区作息按学校时间表配置。最新调整以教务系统为准，可在设置开启自动更新或立即刷新。",fontSize=12.sp,color=colors.onSurfaceVariantSummary,modifier=Modifier.padding(top=8.dp)) } }
         }
         TopScrollEdge(courseLayer,edgeStrength,dark,Modifier.align(Alignment.TopCenter),title="个人课表",titleReveal=titleReveal(courseScroll))
         }
@@ -815,7 +834,7 @@ private fun Modifier.blockMotionInput()=pointerInput(Unit) {
             Image(painterResource(R.drawable.ic_launcher),contentDescription="应用图标",modifier=Modifier.size(96.dp))
             MotionText("个人课表",fontSize=32.sp,fontWeight=FontWeight.Bold,modifier=Modifier.padding(top=22.dp))
             MotionText("每一周，都有清晰的安排",fontSize=15.sp,color=colors.onSurfaceVariantSummary,modifier=Modifier.padding(top=10.dp))
-            MotionText("版本 3.2.5 · Compose Miuix",fontSize=14.sp,color=colors.onSurfaceVariantSummary,modifier=Modifier.padding(top=18.dp))
+            MotionText("版本 3.2.6 · Compose Miuix",fontSize=14.sp,color=colors.onSurfaceVariantSummary,modifier=Modifier.padding(top=18.dp))
         } }
         item { MotionText("项目",fontSize=14.sp,color=colors.onSurfaceVariantSummary);Spacer(Modifier.height(10.dp));Card(insideMargin=PaddingValues(20.dp)) {
             MotionText("广交个人课表",fontSize=20.sp,fontWeight=FontWeight.SemiBold);Spacer(Modifier.height(14.dp));MotionText("你的课程与每周安排\n2026—2027 · 第一学期",fontSize=14.sp,lineHeight=23.sp);Spacer(Modifier.height(22.dp))
@@ -826,7 +845,7 @@ private fun Modifier.blockMotionInput()=pointerInput(Unit) {
         item { MotionText("适配与数据",fontSize=14.sp,color=colors.onSurfaceVariantSummary);Spacer(Modifier.height(10.dp));Card(insideMargin=PaddingValues(20.dp)) {
             MotionText("安卓桌面小部件",fontSize=18.sp,fontWeight=FontWeight.SemiBold)
             MotionText("提供小米、vivo、OPPO、华为和荣耀风格。通过系统安卓小部件入口添加；具体显示与权限由手机桌面决定。",fontSize=14.sp,modifier=Modifier.padding(top=10.dp))
-            MotionText("个人教务课表与自建课程保存在本机，可离线查看。最新调整以教务系统为准，调整后请重新导入。",fontSize=13.sp,color=colors.onSurfaceVariantSummary,modifier=Modifier.padding(top=18.dp))
+            MotionText("个人教务课表与自建课程保存在本机，可离线查看。最新调整以教务系统为准，可在设置开启自动更新或立即刷新。",fontSize=13.sp,color=colors.onSurfaceVariantSummary,modifier=Modifier.padding(top=18.dp))
         } }
     }
 }
@@ -876,7 +895,7 @@ private fun Modifier.blockMotionInput()=pointerInput(Unit) {
         if(uri!=null) try {val text=BackupData.exportData(context);context.contentResolver.openOutputStream(uri)?.use {it.write(text.toByteArray(Charsets.UTF_8))}?:error("无法写入文件");notice="备份已保存"}catch(e:Exception){notice="保存失败：${e.message}"}
     }
     val importer=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if(uri!=null) try {val bytes=context.contentResolver.openInputStream(uri)?.use {it.readBytesLimited()}?:error("无法读取文件");val text=bytes.toString(Charsets.UTF_8);BackupData.validate(text);pending=text;notice="备份有效，确认后恢复并替换当前本地设置和自建课程。"}catch(e:Exception){notice="导入失败：${e.message}"}
+        if(uri!=null) try {val bytes=context.contentResolver.openInputStream(uri)?.use {it.readBytesLimited()}?:error("无法读取文件");val text=bytes.toString(Charsets.UTF_8);BackupData.validate(text);pending=text;notice="备份有效，确认后恢复并替换备份中包含的课表、本地设置和自建课程；自动更新将关闭。"}catch(e:Exception){notice="导入失败：${e.message}"}
     }
     val jwImporter=rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {onRestored()}
     BackHandler(enabled=active) {onClose()}
@@ -892,6 +911,7 @@ private fun Modifier.blockMotionInput()=pointerInput(Unit) {
         }
         MotionText(if(PersonalImport.active(context)) "正在使用个人教务课表" else "教务系统",fontSize=14.sp,color=colors.onSurfaceVariantSummary)
         Button(onClick={jwImporter.launch(Intent(context,JwImportActivity::class.java))},modifier=Modifier.fillMaxWidth()) {MotionText("登录教务系统并解析个人课表")}
+        JwSyncSettings(onLogin={jwImporter.launch(Intent(context,JwImportActivity::class.java))})
         if(PersonalImport.active(context)) TextButton("切回个人课表",{PersonalImport.useClass(context);onRestored()},Modifier.fillMaxWidth())
         MotionText("备份",fontSize=14.sp,color=colors.onSurfaceVariantSummary,modifier=Modifier.padding(top=16.dp))
         Card(insideMargin=PaddingValues(0.dp)) {
