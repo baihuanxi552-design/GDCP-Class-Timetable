@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: AGPL-3.0-only */
 /* HyperCeiler glow.glsl adapter, AGPL-3.0. Upstream shader is shipped unchanged.
  * Copyright (C) 2023-2026 HyperCeiler Contributions. See guide-assets/AGPL-3.0.txt. */
 window.GuideFlow=class {

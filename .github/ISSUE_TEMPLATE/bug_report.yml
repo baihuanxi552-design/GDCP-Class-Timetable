@@ -1,0 +1,50 @@
+name: Bug 报告
+description: 报告可复现的功能、显示或兼容问题
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        请先移除真实课表、学号、密码、Cookie、ticket 和签名信息。安全漏洞请按 SECURITY.md 私密报告。
+  - type: dropdown
+    id: platform
+    attributes:
+      label: 平台
+      options:
+        - Android
+        - 网页
+        - Android 与网页
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: 版本与环境
+      description: 例如 Android 3.2.5 / 小米 Android 15，或 Chrome 版本
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      placeholder: 使用虚构数据描述最小复现步骤
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 预期行为
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际行为
+    validations:
+      required: true
+  - type: textarea
+    id: validation
+    attributes:
+      label: 已尝试的排查
+      description: 包括是否可稳定复现、是否仅发生在特定周次/字体大小/设备

@@ -1,134 +1,58 @@
-# 个人课表 · 无内置数据版 3.1.17
+# 广交个人课表
 
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
+[![Android build](https://github.com/baihuanxi552-design/GDCP-Class-Timetable/actions/workflows/build-empty.yml/badge.svg)](https://github.com/baihuanxi552-design/GDCP-Class-Timetable/actions/workflows/build-empty.yml)
+[![Latest release](https://img.shields.io/github/v/release/baihuanxi552-design/GDCP-Class-Timetable)](https://github.com/baihuanxi552-design/GDCP-Class-Timetable/releases/latest)
 
+面向广东交通职业技术学院的本地课表工具，包含静态网页版和 Android 客户端。仓库、网页和 APK 不内置任何个人课表、账号、密码或教师名单。项目并非学校官方应用，课表结果应以教务系统为准。
 
+- 在线使用：<https://baihuanxi552-design.github.io/GDCP-Class-Timetable/>
+- Android 下载：<https://github.com/baihuanxi552-design/GDCP-Class-Timetable/releases/latest>
+- 当前版本：网页 3.3.2；Android 3.2.5
 
+## 功能
 
-网页和 Android 均不包含个人课表、教师名单或个人课表。首次使用可直接自建课程，或在「关于 → 设置 → 从本地导入」导入完整备份。
+- 日课表、周课表、课程详情和桌面小部件
+- 本机自建课程以及 JSON 备份导入、导出
+- 通过学校官方教务页面导入个人课表
+- 深色模式、系统字体缩放和减少动态效果支持
+- 网页数据保存在浏览器本地；Android 数据保存在应用私有存储
 
+教务系统的页面结构和课表可能变化。解析失败、学期不匹配或登录失效时，不应使用不完整结果覆盖已有数据。计划中的自动更新设计见 [android/AUTO-SYNC-PROPOSAL.md](android/AUTO-SYNC-PROPOSAL.md)。
 
+## 隐私与数据
 
+本项目不运营课表后端，也不收集账号密码。Android 登录发生在学校官方页面中；网页版导入结果和备份保存在本机。具体的数据范围、网络请求和删除方式见 [PRIVACY.md](PRIVACY.md)。
 
+提交 Issue、测试文件或 Pull Request 前，请移除姓名、学号、教师、教室、Cookie、ticket、课表和签名密钥等信息。测试数据应使用虚构内容。
 
-备份使用 `gdcp-timetable-backup` v1；可选 `catalog` 字段包含完整个人课表及体育项目。导出会包含已导入数据，备份只保存在用户选择的本地文件中。旧版仅设置备份仍受支持，但课表必须存在于当前导入的数据中。
+## 本地运行
 
+网页版是静态文件，无构建步骤：
 
+```bash
+python -m http.server 8000
+```
 
+然后访问 <http://localhost:8000>。
 
+Android 构建需要 JDK 17 和 Android SDK 35：
 
-网页为静态文件，无编译步骤，执行 `python -m http.server 8000` 可预览。Android 需要 JDK17+、SDK35，执行 `./gradlew assembleRelease testDebugUnitTest lintRelease`。发布版本需要签名。
+```bash
+cd android
+./gradlew assembleRelease testDebugUnitTest lintRelease
+```
 
+构建得到的是未签名 Release APK。正式发布必须使用维护者自己的签名密钥；密钥及密码不得提交到仓库。CI 还会检查 APK 中的 `school-data.json` 不含预置课表。
 
+## 参与项目
 
+提交代码前请阅读 [CONTRIBUTING.md](CONTRIBUTING.md) 和 [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)。安全问题按 [SECURITY.md](SECURITY.md) 报告。
 
+## 许可证
 
-旧 APK、含个人数据的快捷指令示例、旧 Release 和旧标签已删除。主分支已从无课表数据的新根提交开始；原课表及历史备份仅保存在用户工作区。GitHub 缓存中的旧对象需要平台另行处理。
+除另有明确标注的第三方内容外，本项目原创代码和文档采用 [GNU Affero General Public License v3.0 only](LICENSE)（SPDX：`AGPL-3.0-only`）。运行在网络上的修改版本也必须向用户提供对应源代码。
 
+第三方组件、衍生文件和完整归属见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。其中 Apache-2.0、MIT 等组件仍按各自许可证提供，不因本项目许可证而改变。
 
-
-
-
-自动构建产物在 GitHub Actions 的 `timetable-empty-3.1.17` 中，包括网页 ZIP、可安装的调试签名 APK 和未签名 release APK。调试签名 APK 无法覆盖旧正式签名应用，迁移前先导出本机备份。
-
-
-
-
-
-第三方许可保留在工程中。
-
-
-
-
-
-## 在线访问与下载
-
-
-
-
-
-- 网页：https://baihuanxi552-design.github.io/GDCP-Class-Timetable/
-
-
-- 安卓安装包与网页离线包：https://github.com/baihuanxi552-design/GDCP-Class-Timetable/releases/tag/android-v3.2.5
-
-
-
-
-
-当前 Releases 安装包使用正式签名，可覆盖 3.2.0 及之后的正式版；旧测试签名版本升级前请先备份。
-
-
-
-
-
-## Android 3.1.18 性能优化
-
-
-
-
-
-APK 采用非调试 Release 构建，减少切换页面时的重组，复用文字模糊效果。保留原滑动时长和动画风格。使用测试签名；覆盖安装失败时，卸载前先导出备份。编译、单元测试、Lint 和 APK 调试标志检查已通过，实机帧耗时待验证。
-
-
-
-
-
-## 教务系统个人课表解析（3.2.3）
-
-
-
-
-
-关于 → 设置 → 教务系统。安卓在内置页面登录后打开个人课表，选择2026—2027第一学期及全部周次，解析预览后确认导入。网页受跨域限制，登录学校网站后使用解析书签导出JSON，或保存完整个人课表HTML，在本站导入。网页和安卓均只保存课程数据，不上传账号、密码、原始页面或会话。数据离线保存，教务调整后需重新导入。保留自建课程和校区作息；个人课表不按课表分组再次过滤。原有备份格式不包含独立个人导入数据，请保留导出的JSON。
-
-
-
-
-
-[网页版](https://baihuanxi552-design.github.io/GDCP-Class-Timetable/) · [Android 3.2.3 Releases](https://github.com/baihuanxi552-design/GDCP-Class-Timetable/releases/tag/android-v3.2.5)
-
-
-
-
-
-已核对离线教务页面解析、220个时段／第7周16个时段、网页缓存恢复、Release构建与签名。新的学校登录会话、手机浏览器书签支持及安卓实机登录待用户测试。支持当前学期与第1—20周；其他学期明确拒绝导入。
-
-
-
-
-
-签名说明：3.2.3 使用原正式签名，可覆盖原正式签名版本。3.1.17／3.1.18 调试签名版本不能直接覆盖安装；请先导出备份，另行保存个人导入 JSON，再卸载后安装。
-
-
-
-
-
-3.2.3 修正：个人课表入口为登录后的首页个人中心，不再打开课表查询页面。解析首页悬浮详情的完整课程信息，自动读取全部教学周；2026-10-03 已实际登录核对220个时段，以及第7、8、15、18、19周的课程、教师和地点。安卓WebView仍待设备验证。
-
-
-
-
-
-3.2.3：首次打开默认引导登录教务并导入个人课表；可选择校区、稍后导入。已有缓存课表直接进入。安卓登录与解析预览改为Compose Miuix界面，取消跳转首页按钮。网页采用相同步骤卡片，登录在学校网页完成。用户已确认3.2.1安卓登录流程成功；本次界面修改仍待设备体验核对。
-
-
-
-
-## Android 3.2.4 首次欢迎动画
-
-
-
-首次打开显示应用图标放大、柔和光晕和延迟淡入的开始按钮；完成一次后不再重复显示。已有课程缓存不变。实现参考和差异见 [动画说明](android/WELCOME-ANIMATION.md)。本次网页界面不变。
-
-
-## Android 3.2.5 欢迎页流光
-
-欢迎页从黑色以涟漪展开，随后持续显示蓝紫粉色流光。Android 13+ 使用独立 RuntimeShader，旧系统使用动态渐变兼容。后台暂停，关闭动画时显示静态最终状态。更新后展示一次，不影响课表数据。网页界面不变。
-
-## 网页欢迎引导 3.3.0
-
-首次打开按欢迎、校区与个人课表导入、设置完毕完成设置；最后点击开始使用才记录完成。设置中的重新引导可完整重走流程，保留已有课程和自建课程。网页登录依旧通过官方教务网站、解析书签和本地文件导入。详情及上游许可见 [GUIDE-NOTICE.md](GUIDE-NOTICE.md)。
-
-### 更简便的网页登录导入
-
-打开 [解析书签安装页](https://baihuanxi552-design.github.io/GDCP-Class-Timetable/bookmark-install.html)：电脑将按钮拖到书签栏；手机收藏该页面后，编辑书签网址为复制的解析代码。以后在官方教务首页点击书签，课程会直接返回网站核对保存。课程通过 URL 片段传递，网站接收后清除片段，不自动覆盖已有课表。旧版文件导入仍可使用。
+Copyright © 2026 baihuanxi552-design and contributors.

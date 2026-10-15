@@ -1,0 +1,23 @@
+name: 功能建议
+description: 建议新功能或体验改进
+title: "[Feature] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: 使用场景
+      description: 说明要解决的问题，不要附真实课表或账号信息
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 建议方案
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 可选方案与兼容影响
+      description: 如涉及备份格式、教务解析、网页或 Android，请说明
