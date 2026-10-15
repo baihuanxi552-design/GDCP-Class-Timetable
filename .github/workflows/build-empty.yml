@@ -1,10 +1,15 @@
 name: Check Android build
 on:
   push:
-    branches: [main]
+    branches: [main, 'dependabot/**']
     paths:
       - android/**
       - .github/workflows/build-empty.yml
+  pull_request:
+    branches: [main]
+    paths:
+      - android/**
+      - .github/workflows/**
   workflow_dispatch:
 permissions:
   contents: read
