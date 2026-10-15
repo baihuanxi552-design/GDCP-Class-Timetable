@@ -45,3 +45,10 @@ jobs:
           name: android-unsigned-build-${{ github.sha }}
           path: android/app/build/outputs/apk/release/app-release-unsigned.apk
           if-no-files-found: error
+      - name: Download and verify current build artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: android-unsigned-build-${{ github.sha }}
+          path: artifact-check
+      - name: Verify artifact round trip
+        run: cmp android/app/build/outputs/apk/release/app-release-unsigned.apk artifact-check/app-release-unsigned.apk
