@@ -12,7 +12,7 @@
 | Miuix | 0.5.1，[compose-miuix-ui/miuix](https://github.com/compose-miuix-ui/miuix) | Apache-2.0 | Android UI 依赖 |
 | AndroidX / Jetpack Compose | 构建文件所列版本 | Apache-2.0 | Android 运行时依赖 |
 | Kotlin / Compose Multiplatform | Kotlin 2.2.10、Compose 1.8.2 | Apache-2.0 | Android 编译与运行时 |
-| Gradle Wrapper / Android Gradle Plugin | Wrapper 8.13、AGP 8.9.1 | Apache-2.0 | Android 构建工具 |
+| Gradle Wrapper / Android Gradle Plugin | Wrapper 9.8.1、AGP 8.9.1 | Apache-2.0 | Android 构建工具 |
 
 Android APK 内的归属文本位于 `android/app/src/main/assets/THIRD_PARTY_NOTICES.txt`，Haze 的完整许可证也随 APK 资源和源码分发。Apache License 2.0 的完整文本见 `android/app/libs/HAZE-LICENSE.txt`。
 

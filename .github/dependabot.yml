@@ -4,6 +4,12 @@ updates:
     directory: /android
     schedule:
       interval: weekly
+    # Individually tested: these exact releases require a coordinated SDK migration.
+    ignore:
+      - dependency-name: org.jetbrains.compose
+        versions: ["1.12.1"]
+      - dependency-name: "top.yukonga.miuix.kmp:miuix"
+        versions: ["0.8.8"]
     open-pull-requests-limit: 5
     labels:
       - dependencies
