@@ -43,7 +43,7 @@ private tailrec fun Context.mainActivity():MainActivity? = when(this) {
         },Modifier.fillMaxWidth().semantics {stateDescription=if(enabled) "已开启" else "已关闭"})
         Text("开启后加密保留本机登录会话，不保存账号密码；关闭时删除会话。仅打开应用时检查，不在后台定时运行。",fontSize=12.sp,color=colors.onSurfaceVariantSummary)
         if(success>0) {
-            val time=java.time.Instant.ofEpochMilli(success).atZone(ScheduleData.ZONE).format(java.time.format.DateTimeFormatter.ofPattern("MM-dd HH:mm"))
+            val time=java.time.Instant.ofEpochMilli(success).atZone(ScheduleData.ZONE).format(java.time.format.DateTimeFormatter.ofPattern("MM-dd HH:mm:ss"))
             Text("上次成功检查：$time",fontSize=12.sp,modifier=Modifier.padding(top=10.dp))
         }
         Text(message,fontSize=13.sp,modifier=Modifier.padding(top=10.dp).semantics {liveRegion=LiveRegionMode.Polite})

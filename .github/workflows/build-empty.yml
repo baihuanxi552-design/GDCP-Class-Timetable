@@ -100,7 +100,7 @@ jobs:
           fi
           apk="Class-Timetable-$PREVIEW_VERSION-preview.apk"
           mv preview/app-debug.apk "preview/$apk"
-          sha256sum "preview/$apk" > preview/SHA256SUMS.txt
+          (cd preview && sha256sum "$apk" > SHA256SUMS.txt)
           cat > preview/NOTES.md <<'EOF'
           手机验证版：开启自动更新并登录导入一次后，每次打开应用或回到前台立即开始检查课表，不再等待一小时。也可在设置中手动刷新。
 
