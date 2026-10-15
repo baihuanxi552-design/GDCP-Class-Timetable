@@ -580,7 +580,11 @@ private fun Modifier.blockMotionInput()=pointerInput(Unit) {
     val dayColors=remember(courses) {courses.map {CoursePalette.forDay(it)}}
     BoxWithConstraints(Modifier.fillMaxWidth()) {
         val gridWidth=if(maxWidth>=560.dp) maxWidth else 840.dp
-        val columnWidth=(gridWidth-84.dp-32.dp-6.dp*7)/7
+        // Round in pixels before dividing: otherwise the last column can lose a
+        // few pixels and wrap differently from the cards used for measurement.
+        val columnWidth=with(androidx.compose.ui.platform.LocalDensity.current) {
+            ((gridWidth.roundToPx()-84.dp.roundToPx()-16.dp.roundToPx()*2-6.dp.roundToPx()*7)/7).toDp()
+        }
         val small=columnWidth<120.dp
         val padding=if(small) 10.dp else 14.dp
         val scroll=rememberScrollState()
