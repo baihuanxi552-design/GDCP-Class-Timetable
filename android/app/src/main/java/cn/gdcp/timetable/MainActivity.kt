@@ -114,7 +114,6 @@ class MainActivity : ComponentActivity() {
 
 private val days = listOf("一", "二", "三", "四", "五", "六", "日")
 private val accents = CoursePalette.ACCENTS.map { it.toLong() and 0xFFFFFFFFL }
-private fun colorIndex(name:String)=CoursePalette.index(name)
 private fun dateFor(week: Int, day: Int): LocalDate = ScheduleData.START.plusDays(((week-1)*7+day-1).toLong())
 private fun dateText(date: LocalDate) = "${date.monthValue}月${date.dayOfMonth}日"
 private fun weekCourses(week: Int) = (1..7).flatMap { ScheduleData.courses(dateFor(week,it)) }
@@ -281,7 +280,8 @@ private fun weekRanges(weeks: IntArray): String { val ranges= mutableListOf<Stri
                 MotionText("${dateText(today)} · 星期${days[today.dayOfWeek.value-1]}",fontSize=23.sp,fontWeight=FontWeight.Bold,modifier=Modifier.padding(top=8.dp,bottom=16.dp))
                 val list=ScheduleData.courses(today)
                 if(list.isEmpty()) MotionText(if(selectedClass==0 && currentWeek in 3..4) "今天安排军训（含入学教育），具体时间以学校通知为准。" else if(currentWeek in 1..20) "今天没有排课。" else "当前日期不在本学期内。",fontSize=15.sp,color=colors.onSurfaceVariantSummary)
-                list.forEach { CourseCard(it,dark,true) { show(it) };Spacer(Modifier.height(8.dp)) }
+                val dayColors=remember(list) {CoursePalette.forDay(list)}
+                list.forEach { CourseCard(it,dark,true,dayColors.getValue(it)) { show(it) };Spacer(Modifier.height(8.dp)) }
             } }
             item { Card(insideMargin=PaddingValues(18.dp)) {
                 MotionText("教学安排",fontSize=12.sp,color=colors.onSurfaceVariantSummary)
@@ -325,11 +325,12 @@ private fun weekRanges(weeks: IntArray): String { val ranges= mutableListOf<Stri
                         if(shownWide) WeeklyGrid(shownWeek,dark,::show)
                         else {
                             val courses=ScheduleData.courses(dateFor(shownWeek,shownDay))
+                            val dayColors=remember(courses) {CoursePalette.forDay(courses)}
                             if(courses.isEmpty()) Card(Modifier.fillMaxWidth(),insideMargin=PaddingValues(28.dp)) {MotionText("这一天没有排课。",color=colors.onSurfaceVariantSummary)}
                             courses.forEach {course ->
                                 Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(12.dp)) {
                                     Column(Modifier.width(48.dp).padding(top=18.dp),horizontalAlignment=Alignment.CenterHorizontally) {MotionText("${course.first}–${course.last}节",fontSize=12.sp,color=colors.onSurfaceVariantSummary);MotionText(course.startTime(),fontSize=11.sp,color=colors.onSurfaceVariantSummary,modifier=Modifier.padding(top=6.dp))}
-                                    Box(Modifier.weight(1f)) {CourseCard(course,dark,false) {show(course)}}
+                                    Box(Modifier.weight(1f)) {CourseCard(course,dark,false,dayColors.getValue(course)) {show(course)}}
                                 }
                             }
                         }
@@ -550,8 +551,8 @@ private fun Modifier.blockMotionInput()=pointerInput(Unit) {
     }
 }
 @Composable private fun DetailRow(label: String,value: String) { Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(14.dp)) { MotionText(label,Modifier.width(40.dp),fontSize=14.sp,color=MiuixTheme.colorScheme.onSurfaceVariantSummary);MotionText(value,Modifier.weight(1f),fontSize=15.sp) } }
-@Composable private fun CourseCard(course: ScheduleData.Course,dark: Boolean,compact: Boolean,onClick:()->Unit) {
-    val accent=Color(accents[colorIndex(course.name)])
+@Composable private fun CourseCard(course: ScheduleData.Course,dark: Boolean,compact: Boolean,paletteIndex:Int,onClick:()->Unit) {
+    val accent=Color(accents[paletteIndex])
     val background=androidx.compose.ui.graphics.lerp(if(dark) Color(0xFF202022) else Color.White,accent,if(dark) .17f else .12f)
     Card(Modifier.fillMaxWidth().semantics { role=Role.Button },insideMargin=PaddingValues(18.dp),colors=CardDefaults.defaultColors(color=background,contentColor=if(dark) Color(0xFFF0F0F0) else Color(0xFF202027)),pressFeedbackType=PressFeedbackType.Sink,onClick=onClick) {
         Box(Modifier.width(24.dp).height(3.dp).background(accent))
@@ -561,44 +562,69 @@ private fun Modifier.blockMotionInput()=pointerInput(Unit) {
         MotionText(course.time(),fontSize=13.sp)
     }
 }
+// Measure plain text without registering hidden glyphs in the page-transition overlay.
+@Composable private fun WeeklyCourseContent(c:ScheduleData.Course,small:Boolean,measuring:Boolean=false) {
+    @Composable fun Label(value:String,size:Int,top:Int=0,weight:FontWeight?=null) {
+        if(measuring) Text(value,fontSize=size.sp,fontWeight=weight,modifier=Modifier.padding(top=top.dp))
+        else MotionText(value,fontSize=size.sp,fontWeight=weight,modifier=Modifier.padding(top=top.dp))
+    }
+    Label(c.displayName(),if(small) 11 else 14,weight=FontWeight.SemiBold)
+    Label(c.room,if(small) 10 else 12,top=6)
+    if(!small) Label(c.teacher,12,top=4)
+    Label(c.time(),if(small) 9 else 11,top=5)
+}
+
 @Composable private fun WeeklyGrid(week: Int,dark: Boolean,onCourse:(ScheduleData.Course)->Unit) {
     val colors=MiuixTheme.colorScheme
+    val courses=(1..7).map {ScheduleData.courses(dateFor(week,it))}
+    val dayColors=remember(courses) {courses.map {CoursePalette.forDay(it)}}
     BoxWithConstraints(Modifier.fillMaxWidth()) {
         val gridWidth=if(maxWidth>=560.dp) maxWidth else 840.dp
         val columnWidth=(gridWidth-84.dp-32.dp-6.dp*7)/7
         val small=columnWidth<120.dp
-        Column(Modifier.horizontalScroll(rememberScrollState()).width(gridWidth).padding(horizontal=16.dp),verticalArrangement=Arrangement.spacedBy(6.dp)) {
-            Row(horizontalArrangement=Arrangement.spacedBy(6.dp)) {
-                MotionText("节次",Modifier.width(84.dp).padding(start=6.dp,top=12.dp,end=6.dp),fontSize=11.sp)
-                (1..7).forEach { d -> Column(Modifier.width(columnWidth).padding(vertical=10.dp),horizontalAlignment=Alignment.CenterHorizontally) {
-                    MotionText("周${days[d-1]}",fontSize=13.sp,fontWeight=FontWeight.SemiBold)
-                    MotionText(dateText(dateFor(week,d)),fontSize=10.sp,color=colors.onSurfaceVariantSummary)
-                } }
-            }
-            (1..12 step 2).forEach { section -> Row(Modifier.height(IntrinsicSize.Min),horizontalArrangement=Arrangement.spacedBy(6.dp)) {
-                Column(Modifier.width(84.dp).padding(start=6.dp,top=12.dp,end=6.dp)) {
-                    MotionText("$section–${section+1}节",fontSize=11.sp)
-                    MotionText(if(section==3) "10:10 / 10:30\n11:35 / 11:55" else ScheduleData.STARTS[section-1]+"\n"+ScheduleData.ENDS[section],fontSize=10.sp,color=colors.onSurfaceVariantSummary)
+        val padding=if(small) 10.dp else 14.dp
+        val scroll=rememberScrollState()
+        androidx.compose.ui.layout.SubcomposeLayout(Modifier.horizontalScroll(scroll).width(gridWidth)) { constraints ->
+            // One natural measurement for every card in the selected week, including
+            // padding, wrapping and accessibility font scale. Recompute on week/width changes.
+            val natural=subcompose("measure") {
+                courses.flatten().forEach { c ->
+                    Column(Modifier.padding(padding)) {WeeklyCourseContent(c,small,measuring=true)}
                 }
-                (1..7).forEach { d -> Column(Modifier.width(columnWidth).heightIn(min=96.dp),verticalArrangement=Arrangement.spacedBy(4.dp)) {
-                    val list=ScheduleData.courses(dateFor(week,d)).filter { it.first in section..section+1 }
-                    if(list.isEmpty()) Card(Modifier.fillMaxWidth().height(96.dp)) {}
-                    list.forEach { c ->
-                        val accent=Color(accents[colorIndex(c.name)])
-                        val bg=androidx.compose.ui.graphics.lerp(if(dark) Color(0xFF202022) else Color.White,accent,if(dark) .17f else .12f)
-                        Card(Modifier.fillMaxWidth().semantics { role=Role.Button;contentDescription="${c.name}，${c.room}，${c.time()}" },insideMargin=PaddingValues(if(small) 10.dp else 14.dp),colors=CardDefaults.defaultColors(color=bg),pressFeedbackType=PressFeedbackType.Sink,onClick={onCourse(c)}) {
-                            MotionText(c.displayName(),fontSize=if(small) 11.sp else 14.sp,fontWeight=FontWeight.SemiBold)
-                            MotionText(c.room,fontSize=if(small) 10.sp else 12.sp,modifier=Modifier.padding(top=6.dp))
-                            if(!small) MotionText(c.teacher,fontSize=12.sp,modifier=Modifier.padding(top=4.dp))
-                            MotionText(c.time(),fontSize=if(small) 9.sp else 11.sp,modifier=Modifier.padding(top=5.dp))
-                        }
+            }.map { it.measure(androidx.compose.ui.unit.Constraints.fixedWidth(columnWidth.roundToPx())) }
+            val cardHeight=maxOf(96.dp.roundToPx(),natural.maxOfOrNull {it.height} ?: 0).toDp()
+            val grid=subcompose("grid") {
+                Column(Modifier.fillMaxWidth().padding(horizontal=16.dp),verticalArrangement=Arrangement.spacedBy(6.dp)) {
+                    Row(horizontalArrangement=Arrangement.spacedBy(6.dp)) {
+                        MotionText("节次",Modifier.width(84.dp).padding(start=6.dp,top=12.dp,end=6.dp),fontSize=11.sp)
+                        (1..7).forEach { d -> Column(Modifier.width(columnWidth).padding(vertical=10.dp),horizontalAlignment=Alignment.CenterHorizontally) {
+                            MotionText("周${days[d-1]}",fontSize=13.sp,fontWeight=FontWeight.SemiBold)
+                            MotionText(dateText(dateFor(week,d)),fontSize=10.sp,color=colors.onSurfaceVariantSummary)
+                        } }
                     }
-                } }
-            } }
+                    (1..12 step 2).forEach { section -> Row(horizontalArrangement=Arrangement.spacedBy(6.dp)) {
+                        Column(Modifier.width(84.dp).padding(start=6.dp,top=12.dp,end=6.dp)) {
+                            MotionText("$section–${section+1}节",fontSize=11.sp)
+                            MotionText(if(section==3) "10:10 / 10:30\n11:35 / 11:55" else ScheduleData.STARTS[section-1]+"\n"+ScheduleData.ENDS[section],fontSize=10.sp,color=colors.onSurfaceVariantSummary)
+                        }
+                        (1..7).forEach { d -> Column(Modifier.width(columnWidth),verticalArrangement=Arrangement.spacedBy(4.dp)) {
+                            val list=courses[d-1].filter { it.first in section..section+1 }
+                            if(list.isEmpty()) Card(Modifier.fillMaxWidth().height(cardHeight)) {}
+                            list.forEach { c ->
+                                val accent=Color(accents[dayColors[d-1].getValue(c)])
+                                val bg=lerp(if(dark) Color(0xFF202022) else Color.White,accent,if(dark) .17f else .12f)
+                                Card(Modifier.fillMaxWidth().height(cardHeight).semantics { role=Role.Button;contentDescription="${c.name}，${c.room}，${c.time()}" },insideMargin=PaddingValues(padding),colors=CardDefaults.defaultColors(color=bg),pressFeedbackType=PressFeedbackType.Sink,onClick={onCourse(c)}) {
+                                    WeeklyCourseContent(c,small)
+                                }
+                            }
+                        } }
+                    } }
+                }
+            }.single().measure(constraints)
+            layout(grid.width,grid.height) {grid.placeRelative(0,0)}
         }
     }
 }
-
 
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -988,3 +1014,4 @@ private val LocalTextMotion=compositionLocalOf<TextMotion?> {null}
         }
     }
 }
+
