@@ -35,7 +35,7 @@ public final class JwCourseDiff {
   }
  }
  public static boolean pendingFresh(long savedAt,long now){return savedAt>0&&now>=savedAt&&now-savedAt<=86400000L;}
- public static boolean due(boolean enabled,boolean active,boolean hasSession,boolean needsLogin,long attempt,long now,boolean manual){
-  return enabled&&active&&hasSession&&!needsLogin&&(manual||attempt==0||now<attempt||now-attempt>=3600000L);
+ public static boolean canRefresh(boolean enabled,boolean active,boolean hasSession,boolean needsLogin){
+  return enabled&&active&&hasSession&&!needsLogin;
  }
 }

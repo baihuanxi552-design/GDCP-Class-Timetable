@@ -2,11 +2,18 @@ plugins { id("com.android.application");id("org.jetbrains.kotlin.android");id("o
 android {
  namespace = "cn.gdcp.timetable"
  compileSdk = 35
- defaultConfig { applicationId = "cn.gdcp.timetable";minSdk = 26;targetSdk = 35;versionCode = 53;versionName = "3.2.6";testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner" }
+ defaultConfig { applicationId = "cn.gdcp.timetable";minSdk = 26;targetSdk = 35;versionCode = 54;versionName = "3.2.7";testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner";resValue("string", "app_title", "个人课表") }
  buildFeatures { compose = true }
  compileOptions { sourceCompatibility = JavaVersion.VERSION_17;targetCompatibility = JavaVersion.VERSION_17 }
  kotlinOptions { jvmTarget = "17" }
- buildTypes { release { isMinifyEnabled = false } }
+ buildTypes {
+  release { isMinifyEnabled = false }
+  debug {
+   applicationIdSuffix = ".preview"
+   versionNameSuffix = "-preview"
+   resValue("string", "app_title", "个人课表·验证版")
+  }
+ }
  packaging { resources.excludes += setOf("META-INF/AL2.0", "META-INF/LGPL2.1") }
 }
 dependencies {

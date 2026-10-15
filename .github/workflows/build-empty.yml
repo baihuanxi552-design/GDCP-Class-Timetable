@@ -30,15 +30,16 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Compile Release and run checks
         working-directory: android
-        run: bash gradlew assembleRelease testDebugUnitTest lintRelease --no-daemon
+        run: bash gradlew assembleRelease assembleDebug testDebugUnitTest lintRelease --no-daemon
       - name: Verify unsigned APK contains no bundled timetable
         run: |
           python - <<'PY'
           import zipfile,json
-          with zipfile.ZipFile('android/app/build/outputs/apk/release/app-release-unsigned.apk') as z:
-              d=json.loads(z.read('assets/school-data.json'))
-              assert not d['strings'] and not d['teacherProjects']
-              assert all(not c['courses'] for c in d['classes'])
+          for path in ['android/app/build/outputs/apk/release/app-release-unsigned.apk','android/app/build/outputs/apk/debug/app-debug.apk']:
+              with zipfile.ZipFile(path) as z:
+                  d=json.loads(z.read('assets/school-data.json'))
+                  assert not d['strings'] and not d['teacherProjects']
+                  assert all(not c['courses'] for c in d['classes'])
           PY
       - uses: actions/upload-artifact@v4
         with:
@@ -52,3 +53,13 @@ jobs:
           path: artifact-check
       - name: Verify artifact round trip
         run: cmp android/app/build/outputs/apk/release/app-release-unsigned.apk artifact-check/app-release-unsigned.apk
+      - name: Verify installable preview signature and package
+        run: |
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose android/app/build/outputs/apk/debug/app-debug.apk
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging android/app/build/outputs/apk/debug/app-debug.apk | sed -n '1,4p'
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging android/app/build/outputs/apk/debug/app-debug.apk | grep -F "package: name='cn.gdcp.timetable.preview'"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-installable-preview-${{ github.sha }}
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error

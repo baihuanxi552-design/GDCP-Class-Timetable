@@ -26,13 +26,11 @@ public final class JwRefresh {
  public void start(boolean manual){
   if(running||JwSession.busy()){if(manual)JwSession.message(activity,"正在处理教务页面，请稍候。");return;}
   android.content.SharedPreferences p=JwSession.prefs(activity);
-  if(!JwCourseDiff.due(JwSession.enabled(activity),PersonalImport.active(activity),JwSession.hasSession(activity),p.getBoolean("jwSyncNeedsLogin",false),p.getLong("jwSyncAttempt",0),System.currentTimeMillis(),manual)){
+  if(!JwCourseDiff.canRefresh(JwSession.enabled(activity),PersonalImport.active(activity),JwSession.hasSession(activity),p.getBoolean("jwSyncNeedsLogin",false))){
    if(manual)JwSession.message(activity,"请先开启自动更新，并登录教务系统确认导入个人课表。");return;
   }
-  if(p.contains("jwSyncPending")){
-   if(JwCourseDiff.pendingFresh(p.getLong("jwSyncPendingAt",0),System.currentTimeMillis())){if(manual)JwSession.message(activity,"有待确认的课表变化，请先确认或取消本次更新。");return;}
+  if(p.contains("jwSyncPending")&&!JwCourseDiff.pendingFresh(p.getLong("jwSyncPendingAt",0),System.currentTimeMillis()))
    p.edit().remove("jwSyncPending").remove("jwSyncPendingBase").remove("jwSyncPendingAt").commit();
-  }
   if(!JwSession.acquire())return;
   running=true;finished=false;parsing=false;epoch=JwSession.generation(activity);baseline=p.getString("jwPersonal","");
   p.edit().putLong("jwSyncAttempt",System.currentTimeMillis()).commit();JwSession.message(activity,"正在检查全部教学周…");
@@ -92,13 +90,13 @@ public final class JwRefresh {
      JwSession.message(activity,"检测到较多删课或调整："+diff.summary()+"，请在设置中确认。");
     }else if(diff.changed()){
      PersonalImport.save(activity,clean.toString());JwSession.message(activity,"课表已更新："+diff.summary()+"。自建课程已保留。");
-    }else JwSession.message(activity,"检查完成，课表没有变化。");
+    }else {p.edit().remove("jwSyncPending").remove("jwSyncPendingBase").remove("jwSyncPendingAt").commit();JwSession.message(activity,"检查完成，课表没有变化。");}
     p.edit().putLong("jwSyncSuccess",System.currentTimeMillis()).commit();
     finish(true);
    }catch(Exception e){fail("未取得有效的完整课表，原课表已保留。可重新登录后重试。",false);}
   });
  }
- public void cancel(){if(running){JwSession.prefs(activity).edit().putLong("jwSyncAttempt",0).commit();fail("刷新已暂停，下次打开应用可继续。原课表已保留。",false);}}
+ public void cancel(){if(running){fail("刷新已暂停，下次打开应用可继续。原课表已保留。",false);}}
  private void fail(String text,boolean login){
   if(!running||finished)return;
   if(login)JwSession.loginRequired(activity);else JwSession.message(activity,text);

@@ -29,7 +29,7 @@ private tailrec fun Context.mainActivity():MainActivity? = when(this) {
     }
     val enabled=remember(revision) {JwSession.enabled(context)}
     val busy=remember(revision) {JwSession.busy()}
-    val message=remember(revision) {prefs.getString("jwSyncMessage","开启后，打开应用时每隔至少一小时检查更新；也可以立即刷新。") ?: ""}
+    val message=remember(revision) {prefs.getString("jwSyncMessage","开启后，每次打开应用或回到前台立即检查更新；也可以手动刷新。") ?: ""}
     val success=remember(revision) {prefs.getLong("jwSyncSuccess",0)}
     val pending=remember(revision) {prefs.getString("jwSyncPending",null)}
     val previous=remember(revision) {prefs.getString("jwPreviousPersonal",null)}
