@@ -50,6 +50,28 @@ public class JwSessionTest {
   saveFakeSession();ui(()->JwSession.setEnabled(context,false));
   assertFalse(JwSession.enabled(context));assertFalse(JwSession.hasSession(context));
  }
+ @Test public void cookiePathScopesSurviveRestore()throws Exception{
+  open();CountDownLatch cookies=new CountDownLatch(2);
+  ui(()->{
+   CookieManager manager=CookieManager.getInstance();
+   manager.setCookie(JwSession.ORIGIN,"JSESSIONID=outer; Path=/; Secure; HttpOnly",ok->cookies.countDown());
+   manager.setCookie(JwSession.ORIGIN,"JSESSIONID=inner; Path=/jsxsd/; Secure; HttpOnly",ok->cookies.countDown());
+  });
+  assertTrue(cookies.await(5,TimeUnit.SECONDS));
+  ui(()->{JwSession.close(context,web,true);web=null;});waitReleased();open();
+  ui(()->{
+   String root=CookieManager.getInstance().getCookie(JwSession.ORIGIN+"/");
+   String school=CookieManager.getInstance().getCookie(JwSession.ORIGIN+"/jsxsd/");
+   assertTrue(root.contains("outer"));assertFalse(root.contains("inner"));assertTrue(school.startsWith("JSESSIONID=inner"));
+  });
+ }
+ @Test public void schoolOriginIsRestricted(){
+  assertTrue(JwRefresh.allowed("https://jw.gdcp.edu.cn/jsxsd/"));
+  assertFalse(JwRefresh.allowed("http://jw.gdcp.edu.cn/jsxsd/"));
+  assertFalse(JwRefresh.allowed("https://jw.gdcp.edu.cn.evil.example/"));
+  assertFalse(JwRefresh.allowed("https://jw.gdcp.edu.cn:444/jsxsd/"));
+  assertFalse(JwRefresh.allowed("javascript:alert(1)"));
+ }
  @Test public void onlyOneWebViewSessionCanRun()throws Exception{
   open();assertFalse(JwSession.acquire());
  }

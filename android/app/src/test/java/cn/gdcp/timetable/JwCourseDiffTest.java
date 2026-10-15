@@ -24,6 +24,10 @@ public class JwCourseDiffTest {
   assertFalse(JwCourseDiff.between(before,data(1,2,3,4,5,6,7,8,9)).needsConfirmation(before));
   assertTrue(JwCourseDiff.between(before,data(1,2,3)).needsConfirmation(before));
  }
+ @Test public void replacingAllOldSlotsEvenInSmallScheduleNeedsConfirmation()throws Exception{
+  JSONObject before=data(1),after=data(1);after.getJSONArray("courses").getJSONObject(0).put("name","Another course");
+  assertTrue(JwCourseDiff.between(before,after).needsConfirmation(before));
+ }
  @Test public void emptyAndWrongSemesterAreNeverValidSnapshots()throws Exception{
   JSONObject empty=data(1);empty.put("courses",new JSONArray());
   try{PersonalImport.validate(empty.toString());fail();}catch(JSONException expected){}

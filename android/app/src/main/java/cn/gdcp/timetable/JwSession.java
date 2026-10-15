@@ -9,11 +9,13 @@ import java.nio.charset.StandardCharsets;
 import java.security.KeyStore;
 import java.util.*;
 import javax.crypto.*;
+import org.json.*;
 import javax.crypto.spec.GCMParameterSpec;
 
 /** Only an encrypted cookie snapshot is retained between WebView sessions. */
 public final class JwSession {
  public static final String ORIGIN="https://jw.gdcp.edu.cn";
+ private static final String[] PATHS={"/","/jsxsd/","/jsxsd/framework/"};
  private static final String ALIAS="gdcp.jw.session.v1";
  private static boolean owned;
  public static android.content.SharedPreferences prefs(Context c){return c.getSharedPreferences("school",Context.MODE_PRIVATE);}
@@ -56,13 +58,17 @@ public final class JwSession {
   }
  }
  private static void save(Context c)throws Exception{
-  Map<String,String> cookies=new LinkedHashMap<>();
-  for(String path:new String[]{"/","/jsxsd/","/jsxsd/framework/"}) {
-   String header=CookieManager.getInstance().getCookie(ORIGIN+path);
-   if(header!=null)for(String part:header.split(";")){String pair=part.trim();int eq=pair.indexOf('=');if(eq>0&&!pair.contains("\r")&&!pair.contains("\n"))cookies.put(pair.substring(0,eq),pair);}
+  JSONArray snapshot=new JSONArray();
+  for(String path:PATHS) {
+   String header=CookieManager.getInstance().getCookie(ORIGIN+path);Map<String,String> cookies=new LinkedHashMap<>();
+   if(header!=null)for(String part:header.split(";")){
+    String pair=part.trim();int eq=pair.indexOf('=');
+    if(eq>0&&!pair.contains("\r")&&!pair.contains("\n"))cookies.putIfAbsent(pair.substring(0,eq),pair);
+   }
+   for(String pair:cookies.values())snapshot.put(new JSONArray().put(path).put(pair));
   }
-  if(cookies.isEmpty())throw new IOException("missing session");
-  String header=String.join("; ",cookies.values());if(header.length()>32000)throw new IOException();
+  if(snapshot.length()==0)throw new IOException("missing session");
+  String header=snapshot.toString();if(header.length()>32000)throw new IOException();
   Cipher cipher=Cipher.getInstance("AES/GCM/NoPadding");cipher.init(Cipher.ENCRYPT_MODE,key());
   byte[] data=cipher.doFinal(header.getBytes(StandardCharsets.UTF_8));
   AtomicFile target=file(c);FileOutputStream out=null;
@@ -74,17 +80,25 @@ public final class JwSession {
   CookieManager manager=CookieManager.getInstance();manager.setAcceptCookie(true);
   manager.removeAllCookies(ignored->{
    if(!alive.getAsBoolean())return;
-   String header="";
-   try{header=read(c);}catch(Exception e){forget(c);prefs(c).edit().putBoolean("jwSyncNeedsLogin",true).commit();}
-   restore(c,manager,header.split(";"),0,alive,ready);
+   java.util.List<String> cookies=new java.util.ArrayList<>();
+   try{
+    String saved=read(c);
+    if(!saved.isEmpty()){
+     JSONArray snapshot=new JSONArray(saved);
+     for(int i=0;i<snapshot.length();i++){
+      JSONArray row=snapshot.getJSONArray(i);String path=row.getString(0),pair=row.getString(1);
+      if(!java.util.Arrays.asList(PATHS).contains(path)||pair.indexOf('=')<=0||pair.contains(";")||pair.contains("\r")||pair.contains("\n"))throw new IOException();
+      cookies.add(pair+"; Path="+path+"; Secure; HttpOnly; SameSite=Lax");
+     }
+    }
+   }catch(Exception e){cookies.clear();forget(c);prefs(c).edit().putBoolean("jwSyncNeedsLogin",true).commit();}
+   restore(c,manager,cookies,0,alive,ready);
   });
  }
- private static void restore(Context c,CookieManager manager,String[] parts,int index,java.util.function.BooleanSupplier alive,Runnable ready){
+ private static void restore(Context c,CookieManager manager,java.util.List<String> parts,int index,java.util.function.BooleanSupplier alive,Runnable ready){
   if(!alive.getAsBoolean())return;
-  if(index>=parts.length){manager.flush();ready.run();return;}
-  String pair=parts[index].trim();
-  if(pair.indexOf('=')<=0){restore(c,manager,parts,index+1,alive,ready);return;}
-  manager.setCookie(ORIGIN,pair+"; Path=/; Secure; HttpOnly; SameSite=Lax",ok->{
+  if(index>=parts.size()){manager.flush();ready.run();return;}
+  manager.setCookie(ORIGIN,parts.get(index),ok->{
    if(Boolean.TRUE.equals(ok))restore(c,manager,parts,index+1,alive,ready);
    else {forget(c);prefs(c).edit().putBoolean("jwSyncNeedsLogin",true).commit();manager.removeAllCookies(ignored->{if(alive.getAsBoolean())ready.run();});}
   });
