@@ -54,7 +54,7 @@ jobs:
                   assert not d['strings'] and not d['teacherProjects']
                   assert all(not c['courses'] for c in d['classes'])
           PY
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: android-unsigned-build-${{ github.sha }}
           path: android/app/build/outputs/apk/release/app-release-unsigned.apk
@@ -71,7 +71,7 @@ jobs:
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose android/app/build/outputs/apk/debug/app-debug.apk
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging android/app/build/outputs/apk/debug/app-debug.apk | sed -n '1,4p'
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging android/app/build/outputs/apk/debug/app-debug.apk | grep -F "package: name='cn.gdcp.timetable.preview'"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: android-installable-preview-${{ github.sha }}
           path: android/app/build/outputs/apk/debug/app-debug.apk
