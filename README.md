@@ -9,7 +9,7 @@
 - 在线使用：<https://baihuanxi552-design.github.io/GDCP-Class-Timetable/>
 - Android 下载：<https://github.com/baihuanxi552-design/GDCP-Class-Timetable/releases/latest>
 - 当前已发布版本：网页 3.3.2；Android 3.2.5
-- Android 源码版本：3.2.6，新增可选的前台自动检查和手动刷新；需使用原正式签名打包后覆盖安装。
+- Android 源码版本：3.2.7，支持开启后每次打开应用立即检查、手动刷新；正式版需原签名覆盖安装；CI 另提供与正式版并行安装的验证版。
 
 ## 功能
 

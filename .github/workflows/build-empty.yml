@@ -17,6 +17,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -28,17 +30,29 @@ jobs:
           packages: platform-tools platforms;android-35 build-tools;35.0.0
           log-accepted-android-sdk-licenses: false
       - uses: gradle/actions/setup-gradle@v4
+      - name: Read validated preview version
+        id: version
+        run: |
+          python - <<'PY'
+          import os,re,pathlib
+          text=pathlib.Path('android/app/build.gradle.kts').read_text()
+          version=re.search(r'versionName\s*=\s*"([^"]+)"',text).group(1)
+          assert re.fullmatch(r'\d+\.\d+\.\d+',version)
+          with open(os.environ['GITHUB_OUTPUT'],'a') as out:
+              out.write('version='+version+'\n')
+          PY
       - name: Compile Release and run checks
         working-directory: android
-        run: bash gradlew assembleRelease testDebugUnitTest lintRelease --no-daemon
+        run: bash gradlew assembleRelease assembleDebug testDebugUnitTest lintRelease --no-daemon
       - name: Verify unsigned APK contains no bundled timetable
         run: |
           python - <<'PY'
           import zipfile,json
-          with zipfile.ZipFile('android/app/build/outputs/apk/release/app-release-unsigned.apk') as z:
-              d=json.loads(z.read('assets/school-data.json'))
-              assert not d['strings'] and not d['teacherProjects']
-              assert all(not c['courses'] for c in d['classes'])
+          for path in ['android/app/build/outputs/apk/release/app-release-unsigned.apk','android/app/build/outputs/apk/debug/app-debug.apk']:
+              with zipfile.ZipFile(path) as z:
+                  d=json.loads(z.read('assets/school-data.json'))
+                  assert not d['strings'] and not d['teacherProjects']
+                  assert all(not c['courses'] for c in d['classes'])
           PY
       - uses: actions/upload-artifact@v4
         with:
@@ -52,3 +66,48 @@ jobs:
           path: artifact-check
       - name: Verify artifact round trip
         run: cmp android/app/build/outputs/apk/release/app-release-unsigned.apk artifact-check/app-release-unsigned.apk
+      - name: Verify installable preview signature and package
+        run: |
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose android/app/build/outputs/apk/debug/app-debug.apk
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging android/app/build/outputs/apk/debug/app-debug.apk | sed -n '1,4p'
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging android/app/build/outputs/apk/debug/app-debug.apk | grep -F "package: name='cn.gdcp.timetable.preview'"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-installable-preview-${{ github.sha }}
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+  publish-preview:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: android-installable-preview-${{ github.sha }}
+          path: preview
+      - name: Publish parallel-install test APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PREVIEW_VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          tag="android-preview-v$PREVIEW_VERSION"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "Preview version already published; keep the existing APK unchanged."
+            exit 0
+          fi
+          apk="Class-Timetable-$PREVIEW_VERSION-preview.apk"
+          mv preview/app-debug.apk "preview/$apk"
+          (cd preview && sha256sum "$apk" > SHA256SUMS.txt)
+          cat > preview/NOTES.md <<'EOF'
+          手机验证版：开启自动更新并登录导入一次后，每次打开应用或回到前台立即开始检查课表，不再等待一小时。也可在设置中手动刷新。
+
+          包名 cn.gdcp.timetable.preview，桌面名称“个人课表·验证版”，使用调试签名。可与正式版并行安装，数据独立，需要重新登录或导入备份。请勿卸载现有正式版。没有内置课表或账号数据。
+
+          请验证：启用自动更新、退出后重新打开、手动刷新、断网时保留旧课表，以及登录过期后的重新登录。大量删课仍需确认。
+
+          这是验证版，不替换当前正式 Release。源代码和 AGPL-3.0 许可证在本仓库提供。
+          EOF
+          gh release create "$tag" "preview/$apk" preview/SHA256SUMS.txt --target "$GITHUB_SHA" --title "个人课表 $PREVIEW_VERSION · 手机验证版" --notes-file preview/NOTES.md --prerelease --latest=false

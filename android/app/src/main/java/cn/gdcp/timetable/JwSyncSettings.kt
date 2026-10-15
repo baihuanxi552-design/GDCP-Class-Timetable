@@ -29,7 +29,7 @@ private tailrec fun Context.mainActivity():MainActivity? = when(this) {
     }
     val enabled=remember(revision) {JwSession.enabled(context)}
     val busy=remember(revision) {JwSession.busy()}
-    val message=remember(revision) {prefs.getString("jwSyncMessage","开启后，打开应用时每隔至少一小时检查更新；也可以立即刷新。") ?: ""}
+    val message=remember(revision) {prefs.getString("jwSyncMessage","开启后，每次打开应用或回到前台立即检查更新；也可以手动刷新。") ?: ""}
     val success=remember(revision) {prefs.getLong("jwSyncSuccess",0)}
     val pending=remember(revision) {prefs.getString("jwSyncPending",null)}
     val previous=remember(revision) {prefs.getString("jwPreviousPersonal",null)}
@@ -43,7 +43,7 @@ private tailrec fun Context.mainActivity():MainActivity? = when(this) {
         },Modifier.fillMaxWidth().semantics {stateDescription=if(enabled) "已开启" else "已关闭"})
         Text("开启后加密保留本机登录会话，不保存账号密码；关闭时删除会话。仅打开应用时检查，不在后台定时运行。",fontSize=12.sp,color=colors.onSurfaceVariantSummary)
         if(success>0) {
-            val time=java.time.Instant.ofEpochMilli(success).atZone(ScheduleData.ZONE).format(java.time.format.DateTimeFormatter.ofPattern("MM-dd HH:mm"))
+            val time=java.time.Instant.ofEpochMilli(success).atZone(ScheduleData.ZONE).format(java.time.format.DateTimeFormatter.ofPattern("MM-dd HH:mm:ss"))
             Text("上次成功检查：$time",fontSize=12.sp,modifier=Modifier.padding(top=10.dp))
         }
         Text(message,fontSize=13.sp,modifier=Modifier.padding(top=10.dp).semantics {liveRegion=LiveRegionMode.Polite})

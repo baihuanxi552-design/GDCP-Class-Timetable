@@ -35,11 +35,11 @@ public class JwCourseDiffTest {
   try{PersonalImport.validate(wrong.toString());fail();}catch(JSONException expected){}
  }
  @Test public void refreshingRequiresOptInActiveTimetableAndSession(){
-  assertFalse(JwCourseDiff.due(false,true,true,false,0,10000,true));
-  assertFalse(JwCourseDiff.due(true,false,true,false,0,10000,true));
-  assertFalse(JwCourseDiff.due(true,true,false,false,0,10000,true));
-  assertFalse(JwCourseDiff.due(true,true,true,true,0,10000,true));
-  assertTrue(JwCourseDiff.due(true,true,true,false,0,10000,false));
+  assertFalse(JwCourseDiff.canRefresh(false,true,true,false));
+  assertFalse(JwCourseDiff.canRefresh(true,false,true,false));
+  assertFalse(JwCourseDiff.canRefresh(true,true,false,false));
+  assertFalse(JwCourseDiff.canRefresh(true,true,true,true));
+  assertTrue(JwCourseDiff.canRefresh(true,true,true,false));
  }
  @Test public void pendingConfirmationExpiresAndRejectsClockRollback(){
   assertTrue(JwCourseDiff.pendingFresh(1000,2000));
@@ -47,10 +47,5 @@ public class JwCourseDiffTest {
   assertFalse(JwCourseDiff.pendingFresh(2000,1000));
   assertFalse(JwCourseDiff.pendingFresh(0,1000));
  }
- @Test public void automaticRefreshThrottlesAndManualBypassesOnlyInterval(){
-  assertFalse(JwCourseDiff.due(true,true,true,false,10000,20000,false));
-  assertTrue(JwCourseDiff.due(true,true,true,false,10000,3610000,false));
-  assertTrue(JwCourseDiff.due(true,true,true,false,10000,20000,true));
-  assertTrue(JwCourseDiff.due(true,true,true,false,20000,10000,false));
- }
+
 }
