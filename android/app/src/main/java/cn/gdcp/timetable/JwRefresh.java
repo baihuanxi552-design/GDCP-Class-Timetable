@@ -14,7 +14,7 @@ import java.util.Objects;
 /** Foreground-only refresh; never opens a login form or changes data on a failed request. */
 public final class JwRefresh {
  private final Activity activity;private final Handler handler=new Handler(Looper.getMainLooper());
- private WebView web;private boolean running,parsing,finished;private long epoch;private String baseline;
+ private WebView web;private boolean running,parsing,finished;private long epoch,sessionWaitStarted;private String baseline;
  private final Runnable timeout=()->fail("刷新超时，请检查网络后重试。原课表已保留。",false);
  public JwRefresh(Activity a){activity=a;}
  public static boolean allowed(String url){try{Uri u=Uri.parse(url);return "https".equals(u.getScheme())&&"jw.gdcp.edu.cn".equals(u.getHost())&&(u.getPort()==-1||u.getPort()==443);}catch(Exception e){return false;}}
@@ -24,7 +24,18 @@ public final class JwRefresh {
   CookieManager.getInstance().setAcceptThirdPartyCookies(w,false);
  }
  public void start(boolean manual){
-  if(running||JwSession.busy()){if(manual)JwSession.message(activity,"正在处理教务页面，请稍候。");return;}
+  if(activity.isFinishing()||activity.isDestroyed()||running)return;
+  if(JwSession.busy()){
+   if(manual)JwSession.message(activity,"正在处理教务页面，请稍候。");
+   else {
+    long now=android.os.SystemClock.elapsedRealtime();
+    if(sessionWaitStarted==0)sessionWaitStarted=now;
+    if(now-sessionWaitStarted<5000)handler.postDelayed(()->start(false),50);
+    else {sessionWaitStarted=0;JwSession.message(activity,"教务页面仍在关闭，请稍后点立即刷新。");}
+   }
+   return;
+  }
+  sessionWaitStarted=0;
   android.content.SharedPreferences p=JwSession.prefs(activity);
   if(!JwCourseDiff.canRefresh(JwSession.enabled(activity),PersonalImport.active(activity),JwSession.hasSession(activity),p.getBoolean("jwSyncNeedsLogin",false))){
    if(manual)JwSession.message(activity,"请先开启自动更新，并登录教务系统确认导入个人课表。");return;
@@ -96,7 +107,7 @@ public final class JwRefresh {
    }catch(Exception e){fail("未取得有效的完整课表，原课表已保留。可重新登录后重试。",false);}
   });
  }
- public void cancel(){if(running){fail("刷新已暂停，下次打开应用可继续。原课表已保留。",false);}}
+ public void cancel(){handler.removeCallbacksAndMessages(null);sessionWaitStarted=0;if(running){fail("刷新已暂停，下次打开应用可继续。原课表已保留。",false);}}
  private void fail(String text,boolean login){
   if(!running||finished)return;
   if(login)JwSession.loginRequired(activity);else JwSession.message(activity,text);

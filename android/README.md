@@ -1,6 +1,6 @@
 # Android 客户端
 
-源码版本：3.2.7（versionCode 54），包名 `cn.gdcp.timetable`。
+源码版本：3.2.8（versionCode 55），包名 `cn.gdcp.timetable`。
 
 客户端不内置个人课表，支持教务个人课表导入、JSON 备份、自建课程、日/周视图和桌面小部件。
 
