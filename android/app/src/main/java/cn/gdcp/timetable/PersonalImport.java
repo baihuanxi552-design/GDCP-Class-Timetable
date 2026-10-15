@@ -12,7 +12,14 @@ public final class PersonalImport {
   JSONObject result=new JSONObject();result.put("format","gdcp-personal-timetable");result.put("version",1);result.put("semester","2026-2027-1");result.put("courses",clean);return result;
  }
  public static boolean active(Context context){return context.getSharedPreferences("school",Context.MODE_MULTI_PROCESS).getBoolean("jwActive",false);}
- public static void save(Context context,String text)throws JSONException{String clean=validate(text).toString();context.getSharedPreferences("school",Context.MODE_MULTI_PROCESS).edit().putString("jwPersonal",clean).putBoolean("jwActive",true).commit();SchoolData.confirm(context,SchoolData.selected,SchoolData.campus);SchoolData.reload(context);BaseWidgetProvider.updateAll(context);}
+ public static void save(Context context,String text)throws JSONException{
+  String clean=validate(text).toString();android.content.SharedPreferences p=JwSession.prefs(context);
+  android.content.SharedPreferences.Editor edit=p.edit();String previous=p.getString("jwPersonal",null);
+  if(previous!=null&&!previous.equals(clean))edit.putString("jwPreviousPersonal",previous);
+  edit.putString("jwPersonal",clean).putBoolean("jwActive",true).remove("jwSyncPending").remove("jwSyncPendingBase").remove("jwSyncPendingAt");
+  if(!edit.commit())throw new JSONException("无法保存课表");
+  SchoolData.confirm(context,SchoolData.selected,SchoolData.campus);SchoolData.reload(context);BaseWidgetProvider.updateAll(context);
+ }
  public static void useClass(Context context){context.getSharedPreferences("school",Context.MODE_MULTI_PROCESS).edit().putBoolean("jwActive",false).commit();SchoolData.reload(context);BaseWidgetProvider.updateAll(context);}
  public static ScheduleData.Course[] apply(Context context,ScheduleData.Course[] original){
   if(!active(context))return original;

@@ -1,6 +1,6 @@
 # Android 客户端
 
-当前版本：3.2.5（versionCode 52），包名 `cn.gdcp.timetable`。
+源码版本：3.2.6（versionCode 53），包名 `cn.gdcp.timetable`。
 
 客户端不内置个人课表，支持教务个人课表导入、JSON 备份、自建课程、日/周视图和桌面小部件。
 
@@ -20,4 +20,4 @@ Release 默认未签名。正式发布应使用维护者自己的签名密钥；
 
 项目原创部分采用 `AGPL-3.0-only`。Miuix、Compose、AndroidX 和 Haze 等第三方组件保留各自许可证；完整说明见 [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md) 和 `app/src/main/assets/THIRD_PARTY_NOTICES.txt`。
 
-依赖升级的构建结果与暂缓原因见 [DEPENDENCY-REVIEW.md](DEPENDENCY-REVIEW.md)。
+前台自动检查、手动刷新及会话管理见 [JW-REFRESH.md](JW-REFRESH.md)。

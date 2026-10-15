@@ -29,6 +29,7 @@ class JwImportUi {
     fun dismissPreview(): Boolean {if(preview==null)return false;preview=null;saveAction=null;return true}
     fun mount(activity: ComponentActivity, web: WebView, parse: Runnable) {
         activity.setContent {
+            var retainSession by remember { mutableStateOf(JwSession.enabled(activity)) }
             val goBack={if(!dismissPreview()) {if(web.canGoBack()) web.goBack() else activity.finish()}}
             BackHandler {goBack()}
             val dark=isSystemInDarkTheme()
@@ -43,7 +44,10 @@ class JwImportUi {
                     if(preview==null) {
                         AndroidView(factory={web},modifier=Modifier.weight(1f).fillMaxWidth().clip(RoundedCornerShape(24.dp)))
                         Button(onClick={parse.run()},enabled=!busy,modifier=Modifier.fillMaxWidth()) {Text(if(busy) "正在解析全部教学周…" else "解析个人课表")}
-                        Text("仅在本机保存课程，不保存账号密码。",fontSize=12.sp,color=colors.onSurfaceVariantSummary)
+                        TextButton(if(retainSession) "自动更新：已开启" else "自动更新：未开启",{
+                            retainSession=!retainSession;JwSession.setEnabled(activity,retainSession)
+                        },Modifier.fillMaxWidth())
+                        Text(if(retainSession) "保存课表后，加密保留本机登录会话；可在设置中关闭并删除。" else "仅在本机保存课程，不保留登录会话。",fontSize=12.sp,color=colors.onSurfaceVariantSummary)
                     } else {
                         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(18.dp)) {
                             Text("确认个人课表",fontSize=24.sp,fontWeight=FontWeight.Bold)
