@@ -18,60 +18,86 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import kotlin.math.sin
 
-// Original AGSL: moving color fields and a radial reveal, without upstream shader code.
-private const val FLOW_SHADER = """
-uniform float2 viewport;
-uniform float clock;
-uniform float reveal;
-uniform float night;
-half4 main(float2 p) {
-    float2 uv = p / viewport;
-    float t = clock * 0.24;
-    float2 wave = uv + float2(sin(uv.y * 4.0 + t) * 0.14, cos(uv.x * 3.0 - t) * 0.12);
-    float2 a = float2(0.24 + sin(t * 0.8) * 0.27, 0.35 + cos(t * 0.7) * 0.22);
-    float2 b = float2(0.69 + cos(t * 0.6) * 0.24, 0.65 + sin(t * 0.9) * 0.24);
-    float blue = exp(-dot(wave-a, wave-a) * 3.5);
-    float pink = exp(-dot(wave-b, wave-b) * 3.6);
-    float3 color = mix(float3(0.93, 0.90, 0.98), float3(0.63, 0.71, 0.98), blue * 0.70);
-    color = mix(color, float3(0.96, 0.59, 0.72), pink * 0.73);
-    color = mix(color, color * 0.29, night);
-    float d = length(p - viewport * float2(0.5, 0.38));
-    float radius = reveal * length(viewport) * 0.90;
-    float feather = min(viewport.x, viewport.y) * 0.075;
-    float visible = (1.0 - smoothstep(radius - feather, radius + feather, d)) * smoothstep(0.0, 0.025, reveal);
-    float ring = exp(-pow((d - radius) / (feather * 0.65), 2.0)) * sin(reveal * 3.14159);
-    color += float3(0.13, 0.10, 0.18) * ring;
-    return half4(color * visible, 1.0);
-}
-"""
-
+/** Adapted from HyperCeiler GlowPainter / GlowController (AGPL-3.0).
+ * Copyright (C) 2023-2026 HyperCeiler Contributions.
+ * Modifications: Compose Canvas, lifecycle-aware frame clock, portable fallback.
+ * See assets/AGPL-3.0.txt and android/WELCOME-ANIMATION.md.
+ */
 @RequiresApi(33)
-private class FlowShader {
-    val shader = RuntimeShader(FLOW_SHADER)
+private class FlowShader(context: android.content.Context) {
+    val shader = RuntimeShader(context.assets.open("hyperceiler-glow.glsl").bufferedReader().use { it.readText() })
     val paint = Paint().apply { shader = this@FlowShader.shader }
+    init {
+        shader.setFloatUniform("uScale2", 0.82f)
+        shader.setFloatUniform("uSpeed2", 0.49f)
+        shader.setFloatUniform("uColorInMin", 0.3f)
+        shader.setFloatUniform("uColorInMax", 1.0f)
+        shader.setFloatUniform("uColorOutMin", 0.3f)
+        shader.setFloatUniform("uColorOutMax", 0.86f)
+        shader.setFloatUniform("uColorMidPoint", 0.47f)
+        shader.setFloatUniform("uUseOklab", 1.0f)
+        shader.setFloatUniform("uScale", 1.3f)
+        shader.setFloatUniform("uSpeed", 0.4f)
+        shader.setFloatUniform("uBrightnessInMin", 0.25f)
+        shader.setFloatUniform("uBrightnessInMax", 1.0f)
+        shader.setFloatUniform("uBrightnessOutMin", 0.25f)
+        shader.setFloatUniform("uBrightnessOutMax", 1.0f)
+        shader.setFloatUniform("uShowCircle", 1.0f)
+        shader.setFloatUniform("uCircleThickness", 0.4f)
+        shader.setFloatUniform("uCircleFinalRadius", 1.0f)
+        shader.setFloatUniform("uCircleYOffset", 0.1f)
+        shader.setFloatUniform("uCircleSpeed", 0.9f)
+        shader.setFloatUniform("uCircleColorFreq", 1.0f)
+        shader.setFloatUniform("uCircleColorSpeed", 0.0f)
+        shader.setFloatUniform("uCircleEasing", 1.4f)
+        shader.setFloatUniform("uCircleAnimationOffset", 0.0f)
+        shader.setFloatUniform("uMaskDelay", 0.3f)
+        shader.setFloatUniform("uMaskThickness", 0.3f)
+        shader.setFloatUniform("uCircleScreenBlend", 1.0f)
+        shader.setFloatUniform("uCircleAddBlend", 0.04f)
+        shader.setFloatUniform("uCircleColorOffset", 0.25f)
+        shader.setFloatUniform("uCircleUVDistort", 0.0f)
+        shader.setFloatUniform("uColorToDistortWidthRatio", 0.6f)
+        shader.setFloatUniform("uDistortStartTime", 0.2f)
+        shader.setFloatUniform("uDistortEndTime", 0.3f)
+        shader.setFloatUniform("uDistortStart", 0.0f)
+        shader.setFloatUniform("uDistortEnd", 1.0f)
+        shader.setFloatUniform("uStripeFrequency", 0.0f)
+        shader.setFloatUniform("uStripeStrengthX", 0.0f)
+        shader.setFloatUniform("uStripeStrengthY", 0.0f)
+        shader.setFloatUniform("uStripeUVDistort", 0.0f)
+        shader.setFloatUniform("uColorBlack", 0.961f, 0.157f, 0.157f)
+        shader.setFloatUniform("uColorMid", 0.604f, 0.659f, 0.961f)
+        shader.setFloatUniform("uColorWhite", 0.302f, 0.29f, 0.843f)
+    }
 }
 
 @Composable
-internal fun WelcomeFlow(modifier: Modifier, progress: () -> Float, dark: Boolean, reduced: Boolean) {
+internal fun WelcomeFlow(modifier: Modifier, progress: () -> Float, dark: Boolean, reduced: Boolean, centerY: () -> Float, settled: Boolean, running: Boolean=true) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val durationScale = android.provider.Settings.Global.getFloat(context.contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f).coerceAtLeast(0.01f)
     val lifecycle = LocalLifecycleOwner.current.lifecycle
-    val clock = remember { mutableFloatStateOf(0f) }
-    LaunchedEffect(lifecycle, reduced) {
-        if (!reduced) lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+    val clock = remember { mutableFloatStateOf(if (reduced || settled) 3f else 0f) }
+    LaunchedEffect(lifecycle, reduced, running) {
+        if (!reduced && running) lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
             var previous = 0L
+            var direction = 1f
             while (true) withFrameNanos { now ->
-                if (previous != 0L) clock.floatValue += ((now - previous) / 1_000_000_000f).coerceAtMost(0.05f)
+                if (previous != 0L) clock.floatValue += ((now - previous) / 1_000_000_000f).coerceAtMost(0.05f) * direction / durationScale
+                if (clock.floatValue >= 120f) direction = -1f
+                else if (clock.floatValue <= 2f && direction < 0f) direction = 1f
                 previous = now
             }
         }
     }
-    val gpu = remember { if (Build.VERSION.SDK_INT >= 33) runCatching { FlowShader() }.getOrNull() else null }
+    val gpu = remember { if (Build.VERSION.SDK_INT >= 33) runCatching { FlowShader(context) }.getOrNull() else null }
     Canvas(modifier.clearAndSetSemantics {}) {
         val g = progress()
         if (Build.VERSION.SDK_INT >= 33 && gpu != null) {
-            gpu.shader.setFloatUniform("viewport", size.width, size.height)
-            gpu.shader.setFloatUniform("clock", clock.floatValue)
-            gpu.shader.setFloatUniform("reveal", g)
-            gpu.shader.setFloatUniform("night", if (dark) 1f else 0f)
+            gpu.shader.setFloatUniform("uResolution", size.width, size.height)
+            gpu.shader.setFloatUniform("uTime", clock.floatValue)
+            gpu.shader.setFloatUniform("uCircleYOffset", 0.5f - centerY())
+            gpu.shader.setFloatUniform("uShowCircle", if (reduced || settled) 0f else 1f)
             drawIntoCanvas { it.nativeCanvas.drawRect(0f, 0f, size.width, size.height, gpu.paint) }
         } else {
             // Older Android keeps the same reveal using broad animated radial gradients.

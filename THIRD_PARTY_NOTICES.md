@@ -6,7 +6,7 @@
 
 | 组件/内容 | 版本或来源 | 许可证 | 使用位置 |
 | --- | --- | --- | --- |
-| HyperCeiler `library/provision` 的 `glow.glsl` / GlowPainter | [ReChronoRain/HyperCeiler](https://github.com/ReChronoRain/HyperCeiler)，见 [GUIDE-NOTICE.md](GUIDE-NOTICE.md) | AGPL-3.0 | `guide-assets/glow.glsl` 原样保留；`guide-flow.js`、`web-guide.js`、`web-guide.css` 为网页适配/衍生部分 |
+| HyperCeiler `library/provision` 的 `glow.glsl` / GlowPainter | [ReChronoRain/HyperCeiler](https://github.com/ReChronoRain/HyperCeiler)，见 [GUIDE-NOTICE.md](GUIDE-NOTICE.md) | AGPL-3.0 | `guide-assets/glow.glsl`、`android/app/src/main/assets/hyperceiler-glow.glsl` 原样保留；`guide-flow.js`、`web-guide.js`、`web-guide.css` 为网页适配/衍生部分 |
 | progressive-blur `lib/LinearBlur.tsx` | [AndrewPrifer/progressive-blur](https://github.com/AndrewPrifer/progressive-blur) | MIT | `sync.js` 中的渐进模糊思路和适配代码；完整声明见 [PROGRESSIVE-BLUR-LICENSE.txt](PROGRESSIVE-BLUR-LICENSE.txt) |
 | Haze | 1.5.4，[chrisbanes/haze](https://github.com/chrisbanes/haze) | Apache-2.0 | Android 本地 AAR：`android/app/libs/haze-android-1.5.4.aar`；许可见 `android/app/libs/HAZE-LICENSE.txt` |
 | Miuix | 0.5.1，[compose-miuix-ui/miuix](https://github.com/compose-miuix-ui/miuix) | Apache-2.0 | Android UI 依赖 |
@@ -20,6 +20,7 @@ Android APK 内的归属文本位于 `android/app/src/main/assets/THIRD_PARTY_NO
 
 | 组件 | 版本 | 许可证 |
 | --- | --- | --- |
+| Robolectric | 4.14.1 | MIT |
 | JUnit 4 | 4.13.2 | Eclipse Public License 1.0 |
 | JSON-java（JVM 测试用 org.json 实现） | 20240303 | Public Domain；[上游许可](https://github.com/stleary/JSON-java/blob/20240303/LICENSE) |
 | AndroidX Test Runner / JUnit extension | 1.6.2 / 1.2.1 | Apache-2.0 |
@@ -29,6 +30,6 @@ Android APK 内的归属文本位于 `android/app/src/main/assets/THIRD_PARTY_NO
 
 ## 独立实现的参考
 
-Android 欢迎动画参考了 HyperCeiler 的交互和视觉思路，但相关 Kotlin/AGSL 实现为本项目独立代码，不包含其 Java、着色器、图标或其他素材。来源与差异记录在 [android/WELCOME-ANIMATION.md](android/WELCOME-ANIMATION.md)。
+Android 欢迎引导移植了 HyperCeiler 的 glow.glsl、默认参数及时间轴，由 Compose 改写绘制与生命周期；使用个人课表图标与品牌。着色器及衍生部分按上游 AGPL-3.0 提供，完整说明见 `android/app/src/main/assets/HYPERCEILER-NOTICE.txt`。来源与差异记录在 [android/WELCOME-ANIMATION.md](android/WELCOME-ANIMATION.md)。
 
 各商标、项目名称和产品名称归其各自权利人所有。提及学校名称仅用于说明兼容场景，不表示学校认可、赞助或运营本项目。

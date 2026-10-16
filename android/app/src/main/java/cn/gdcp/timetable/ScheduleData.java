@@ -19,6 +19,11 @@ public final class ScheduleData {
  public static Course[] COURSES={};
  public static int week(LocalDate date){return (int)Math.floorDiv(ChronoUnit.DAYS.between(START,date),7)+1;}
  public static List<Course> courses(LocalDate date){List<Course> list=new ArrayList<>();int w=week(date);if(w<1||w>20)return list;for(Course c:COURSES)if(c.day==date.getDayOfWeek().getValue()&&c.inWeek(w))list.add(c);list.sort(Comparator.comparingInt(c->c.first));return list;}
+ public static LocalDate widgetDate(LocalDate date,LocalTime time,int offset){
+  if(offset==1)return date.plusDays(1);
+  List<Course> today=courses(date);
+  return !today.isEmpty()&&next(date,time)==null?date.plusDays(1):date;
+ }
  public static Course next(LocalDate date,LocalTime time){for(Course c:courses(date))if(time.isBefore(LocalTime.parse(c.endTime())))return c;return null;}
  public static String state(Course c,LocalTime time){return time.isBefore(LocalTime.parse(c.startTime()))?"接下来":"正在上课";}
  public static ZonedDateTime nextRefresh(ZonedDateTime now){ZonedDateTime end=now.plusMinutes(30);ZonedDateTime midnight=now.toLocalDate().plusDays(1).atStartOfDay(ZONE);if(midnight.isBefore(end))end=midnight;for(Course c:courses(now.toLocalDate()))for(String clock:new String[]{c.startTime(),c.endTime()}){ZonedDateTime t=now.toLocalDate().atTime(LocalTime.parse(clock)).atZone(ZONE);if(t.isAfter(now)&&t.isBefore(end))end=t;}return end;}

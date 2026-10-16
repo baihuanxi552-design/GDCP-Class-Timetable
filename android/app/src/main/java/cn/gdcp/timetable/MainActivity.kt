@@ -134,20 +134,44 @@ private fun weekRanges(weeks: IntArray): String { val ranges= mutableListOf<Stri
     val context=LocalContext.current
     var selectedClass by rememberSaveable { mutableIntStateOf(SchoolData.selected) }
     var selectedCampus by rememberSaveable { mutableIntStateOf(SchoolData.campus) }
-    var configured by remember { mutableStateOf(SchoolData.configured(context) || PersonalImport.active(context) || ScheduleData.COURSES.isNotEmpty() || context.getSharedPreferences("school",0).getBoolean("onboardingDone",false)) }
+    var configured by remember { mutableStateOf(!context.getSharedPreferences("school",0).getBoolean("guidePendingSetupV1",false) && (SchoolData.configured(context) || PersonalImport.active(context) || ScheduleData.COURSES.isNotEmpty() || context.getSharedPreferences("school",0).getBoolean("onboardingDone",false))) }
     val settingsShown=remember { mutableStateOf(false) }
-    val firstLogin=rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-        if(PersonalImport.active(context)) {SchoolData.confirm(context,selectedClass,selectedCampus);configured=true;BaseWidgetProvider.updateAll(context)}
+    var importingGuide by remember { mutableStateOf(false) }
+    val firstLogin=rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        importingGuide=false
+        if(result.resultCode==android.app.Activity.RESULT_OK && PersonalImport.active(context)) {SchoolData.confirm(context,selectedClass,selectedCampus);configured=true;BaseWidgetProvider.updateAll(context)}
     }
-    var welcomeSeen by rememberSaveable { mutableStateOf(context.getSharedPreferences("school",0).getBoolean("welcomeAnimationSeenV2",false)) }
-    if(!welcomeSeen) {
-        FirstWelcome(onContinue={
-            context.getSharedPreferences("school",0).edit().putBoolean("welcomeAnimationSeenV2",true).apply()
-            welcomeSeen=true
-        })
-        return
+    val guidePrefs=remember { context.getSharedPreferences("school",0) }
+    var guideComplete by remember { mutableStateOf(guidePrefs.getBoolean("guideCompleteV1",false)) }
+    var guideStep by remember { mutableIntStateOf(0) }
+    var welcomeRun by remember { mutableIntStateOf(0) }
+    val guideLifecycle=androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
+    DisposableEffect(guideLifecycle,guideComplete,importingGuide) {
+        var restart=false
+        val observer=androidx.lifecycle.LifecycleEventObserver { _,event ->
+            if(event==androidx.lifecycle.Lifecycle.Event.ON_STOP && !guideComplete && !importingGuide) restart=true
+            if(event==androidx.lifecycle.Lifecycle.Event.ON_START && restart) {
+                guideStep=0;welcomeRun++;restart=false
+            }
+        }
+        guideLifecycle.addObserver(observer)
+        onDispose { guideLifecycle.removeObserver(observer) }
     }
-    if(!configured) {
+    val guideScope=rememberCoroutineScope()
+    val homeReveal=remember { Animatable(1f) }
+    var completingGuide by remember { mutableStateOf(false) }
+    val finishGuide={
+        if(!completingGuide) guideScope.launch {
+            homeReveal.snapTo(0f)
+            completingGuide=true
+            guidePrefs.edit().putBoolean("guideCompleteV1",true).putBoolean("guidePendingSetupV1",false).putBoolean("onboardingDone",true).apply()
+            guideComplete=true
+            homeReveal.animateTo(1f,tween(480,easing=FastOutSlowInEasing))
+            completingGuide=false
+        }
+        Unit
+    }
+    val setupContent: @Composable () -> Unit = {
         val colors=MiuixTheme.colorScheme
         Column(Modifier.fillMaxSize().background(colors.background).verticalScroll(rememberScrollState()).safeDrawingPadding().padding(24.dp),verticalArrangement=Arrangement.spacedBy(20.dp)) {
             MotionText("欢迎使用个人课表",fontSize=30.sp,fontWeight=FontWeight.Bold,modifier=Modifier.padding(top=40.dp))
@@ -165,9 +189,33 @@ private fun weekRanges(weeks: IntArray): String { val ranges= mutableListOf<Stri
                 MotionText("2 · 登录并导入",fontSize=19.sp,fontWeight=FontWeight.SemiBold)
                 MotionText("登录成功后自动进入首页。解析全部教学周，核对后保存即可。",fontSize=14.sp,color=colors.onSurfaceVariantSummary,modifier=Modifier.padding(top=12.dp))
             }
-            Button(onClick={SchoolData.select(context,selectedClass,selectedCampus);firstLogin.launch(Intent(context,JwImportActivity::class.java))},modifier=Modifier.fillMaxWidth()) {MotionText("登录教务系统")}
-            TextButton("稍后导入，先进入应用",{context.getSharedPreferences("school",0).edit().putBoolean("onboardingDone",true).apply();SchoolData.select(context,selectedClass,selectedCampus);configured=true},Modifier.fillMaxWidth())
+            Button(onClick={SchoolData.select(context,selectedClass,selectedCampus);importingGuide=true;firstLogin.launch(Intent(context,JwImportActivity::class.java))},modifier=Modifier.fillMaxWidth()) {MotionText("登录教务系统")}
+            TextButton("稍后导入，先进入应用",{SchoolData.select(context,selectedClass,selectedCampus);configured=true},Modifier.fillMaxWidth())
             MotionText("仅在本机保存课程。已有备份可进入应用后，在关于 → 设置中恢复。",fontSize=13.sp,color=colors.onSurfaceVariantSummary)
+        }
+    }
+    val nextGuideContent: @Composable () -> Unit = {
+        if(configured) SetupComplete(onFinish=finishGuide,active=guideStep!=0) else setupContent()
+    }
+    if(!guideComplete) {
+        if(guideStep==0) key(welcomeRun) { FirstWelcome(onContinue={guideStep=1}, expandedContent=nextGuideContent) }
+        else {
+            val guideTransition=updateTransition(configured,label="guide-completion")
+            val guideDepth by guideTransition.animateFloat(transitionSpec={tween(500,easing=FastOutSlowInEasing)},label="guide-background-depth") {if(it) 1f else 0f}
+            guideTransition.AnimatedContent(modifier=Modifier.fillMaxSize(),transitionSpec={layeredTransition(targetState)}) {complete ->
+                val active=guideTransition.currentState==guideTransition.targetState && complete==configured
+                val foregroundMotion by transition.animateFloat(transitionSpec={tween(500,easing=FastOutSlowInEasing)},label="guide-foreground-shadow") {state -> if(state==EnterExitState.Visible) 0f else 1f}
+                val foregroundShape=devicePageShape()
+                val guideSurface=if(complete) Modifier
+                    .shadow(44.dp*foregroundMotion,foregroundShape,clip=false,ambientColor=Color(0xFF353D49).copy(alpha=.75f),spotColor=Color(0xFF353D49).copy(alpha=.95f))
+                    .clip(foregroundShape)
+                    .background(MiuixTheme.colorScheme.background)
+                    else depthSurface(guideDepth)
+                Box(Modifier.fillMaxSize().then(guideSurface)
+                    .then(if(!active) Modifier.clearAndSetSemantics {}.blockMotionInput() else Modifier)) {
+                    if(complete) SetupComplete(onFinish={if(active) finishGuide()},active=active) else setupContent()
+                }
+            }
         }
         return
     }
@@ -243,7 +291,12 @@ private fun weekRanges(weeks: IntArray): String { val ranges= mutableListOf<Stri
     val settingsMounted=settingsTransition.currentState!=0 || settingsRoute!=0
     val settingsShade by settingsTransition.animateFloat(transitionSpec={tween(500,easing=FastOutSlowInEasing)},label="settings-shade") {if(it==0) 0f else .20f}
     val dockHidden by settingsTransition.animateFloat(transitionSpec={if(initialState!=0 && targetState==0) tween(300,delayMillis=220,easing=FastOutSlowInEasing) else tween(480,easing=FastOutSlowInEasing)},label="dock-slide") {if(it==0) 0f else 1f}
-    BoxWithConstraints(Modifier.fillMaxSize().background(colors.background).onGloballyPositioned {rootOrigin=it.positionInRoot()}) {
+    Box(Modifier.fillMaxSize()) {
+    BoxWithConstraints(Modifier.fillMaxSize().graphicsLayer {
+        alpha=homeReveal.value
+        scaleX=.94f+.06f*homeReveal.value;scaleY=scaleX
+        shape=RoundedCornerShape(28.dp*(1f-homeReveal.value));clip=true
+    }.background(colors.background).onGloballyPositioned {rootOrigin=it.positionInRoot()}) {
         val screenSafe=WindowInsets.safeDrawing.asPaddingValues()
         val autoWeekly=maxWidth>=600.dp || maxWidth>=maxHeight*1.25f
         var viewPreference by rememberSaveable { mutableIntStateOf(0) }
@@ -393,7 +446,7 @@ private fun weekRanges(weeks: IntArray): String { val ranges= mutableListOf<Stri
                     if((forward && state==EnterExitState.PostExit) || (!forward && state==EnterExitState.PreEnter)) 1f else 0f
                 }
                 Box(Modifier.fillMaxSize().then(depthSurface(routeDepth)).background(colors.background).then(if(!active) Modifier.clearAndSetSemantics {}.blockMotionInput() else Modifier)) {
-                    if(route==1) SettingsPage(onClose={closeSettings(false)},onEdit={settingsShown.value=true},onRestored={selectedClass=SchoolData.selected;selectedCampus=SchoolData.campus;configured=SchoolData.configured(context)||PersonalImport.active(context)||context.getSharedPreferences("school",0).getBoolean("onboardingDone",false);courseRevision++;BaseWidgetProvider.updateAll(context)},embedded=true,active=active)
+                    if(route==1) SettingsPage(onReplay={guidePrefs.edit().putBoolean("guideCompleteV1",false).putBoolean("guidePendingSetupV1",true).apply();configured=false;guideStep=0;welcomeRun++;guideComplete=false},onClose={closeSettings(false)},onEdit={settingsShown.value=true},onRestored={selectedClass=SchoolData.selected;selectedCampus=SchoolData.campus;configured=SchoolData.configured(context)||PersonalImport.active(context)||context.getSharedPreferences("school",0).getBoolean("onboardingDone",false);courseRevision++;BaseWidgetProvider.updateAll(context)},embedded=true,active=active)
                     else {
                         Column(Modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState()).safeDrawingPadding().padding(24.dp),verticalArrangement=Arrangement.spacedBy(16.dp)) {
                             MotionText("更改课表",fontSize=30.sp,fontWeight=FontWeight.Bold,modifier=Modifier.padding(top=16.dp))
@@ -405,20 +458,16 @@ private fun weekRanges(weeks: IntArray): String { val ranges= mutableListOf<Stri
             }
         }
         if(customMounted) {
-            Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha=.22f*expansion.value)))
-            val t=expansion.value
-            val fullWidth=constraints.maxWidth.toFloat();val fullHeight=constraints.maxHeight.toFloat()
-            val pageWidth=maxWidth;val pageHeight=maxHeight
-            val start=if(expansionStart==Rect.Zero) with(density) {Rect(fullWidth-84.dp.toPx(),fullHeight-80.dp.toPx(),fullWidth-20.dp.toPx(),fullHeight-16.dp.toPx())} else expansionStart
-            val x=start.left*(1f-t);val y=start.top*(1f-t)
-            val width=start.width+(fullWidth-start.width)*t;val height=start.height+(fullHeight-start.height)*t
-            val shape=devicePageShape(t)
-            Box(Modifier.offset {IntOffset(x.roundToInt(),y.roundToInt())}.size(with(density){width.toDp()},with(density){height.toDp()}).shadow(44.dp*(1f-t*.6f),shape,ambientColor=Color(0xFF353D49).copy(alpha=.75f),spotColor=Color(0xFF353D49).copy(alpha=.95f)).clip(shape).background(lerp(Color(0xFF3482FF),colors.background,t))) {
-                Box(Modifier.wrapContentSize(Alignment.TopStart,unbounded=true).requiredSize(pageWidth,pageHeight).graphicsLayer {alpha=((t-.5f)/.5f).coerceIn(0f,1f)}.then(if(t<.999f || closing) Modifier.clearAndSetSemantics {}.blockMotionInput() else Modifier)) {
-                    CustomCoursePage(onClose={closeCustom()},onChanged={courseRevision++;BaseWidgetProvider.updateAll(context)},embedded=true)
-                }
+            ButtonPageExpansion(expansion.value,expansionStart,Color(0xFF3482FF),expansion.value<.999f || closing) {
+                CustomCoursePage(onClose={closeCustom()},onChanged={courseRevision++;BaseWidgetProvider.updateAll(context)},embedded=true)
             }
         }
+    }
+    if(completingGuide) Box(Modifier.fillMaxSize().graphicsLayer {
+        alpha=1f-homeReveal.value
+        scaleX=1f-.06f*homeReveal.value;scaleY=scaleX
+        shape=RoundedCornerShape(28.dp*homeReveal.value);clip=true
+    }.clearAndSetSemantics {}.blockMotionInput()) { SetupComplete(onFinish={},active=false) }
     }
     SuperDialog(show=weekPicker,title="选择教学周",onDismissRequest={weekPicker.value=false}) {
         Column(Modifier.heightIn(max=360.dp).verticalScroll(rememberScrollState())) {
@@ -498,7 +547,7 @@ private fun weekRanges(weeks: IntArray): String { val ranges= mutableListOf<Stri
 }
 
 // Public window APIs expose each corner in pixels, including rotation/window changes.
-@Composable private fun devicePageShape(progress:Float=1f):RoundedCornerShape {
+@Composable internal fun devicePageShape(progress:Float=1f):RoundedCornerShape {
     val view=androidx.compose.ui.platform.LocalView.current
     val density=androidx.compose.ui.platform.LocalDensity.current
     var radii by remember(view) {mutableStateOf(List(4){0})}
@@ -541,7 +590,7 @@ private fun <S> AnimatedContentTransitionScope<S>.layeredTransition(forward:Bool
     return (enter togetherWith exit).apply {targetContentZIndex=if(forward) 1f else -1f} using SizeTransform(clip=false)
 }
 
-@Composable private fun depthSurface(depth:Float,deviceCorners:Boolean=true,castShadow:Boolean=true):Modifier {
+@Composable internal fun depthSurface(depth:Float,deviceCorners:Boolean=true,castShadow:Boolean=true):Modifier {
     val density=androidx.compose.ui.platform.LocalDensity.current
     val pageShape=if(deviceCorners) devicePageShape(1f-depth) else RoundedCornerShape(CardDefaults.CornerRadius)
     val amount=(depth.coerceIn(0f,1f)*20).roundToInt()/20f
@@ -559,7 +608,7 @@ private fun <S> AnimatedContentTransitionScope<S>.layeredTransition(forward:Bool
 }
 
 // Consume in Initial pass, before descendants can activate a hidden control.
-private fun Modifier.blockMotionInput()=pointerInput(Unit) {
+internal fun Modifier.blockMotionInput()=pointerInput(Unit) {
     awaitEachGesture {
         awaitFirstDown(requireUnconsumed=false,pass=androidx.compose.ui.input.pointer.PointerEventPass.Initial).consume()
         do {
@@ -833,7 +882,7 @@ private fun Modifier.blockMotionInput()=pointerInput(Unit) {
             Image(painterResource(R.drawable.ic_launcher),contentDescription="应用图标",modifier=Modifier.size(96.dp))
             MotionText("个人课表",fontSize=32.sp,fontWeight=FontWeight.Bold,modifier=Modifier.padding(top=22.dp))
             MotionText("每一周，都有清晰的安排",fontSize=15.sp,color=colors.onSurfaceVariantSummary,modifier=Modifier.padding(top=10.dp))
-            MotionText("版本 3.2.8 · Compose Miuix",fontSize=14.sp,color=colors.onSurfaceVariantSummary,modifier=Modifier.padding(top=18.dp))
+            MotionText("版本 3.2.20 · Compose Miuix",fontSize=14.sp,color=colors.onSurfaceVariantSummary,modifier=Modifier.padding(top=18.dp))
         } }
         item { MotionText("项目",fontSize=14.sp,color=colors.onSurfaceVariantSummary);Spacer(Modifier.height(10.dp));Card(insideMargin=PaddingValues(20.dp)) {
             MotionText("广交个人课表",fontSize=20.sp,fontWeight=FontWeight.SemiBold);Spacer(Modifier.height(14.dp));MotionText("你的课程与每周安排\n2026—2027 · 第一学期",fontSize=14.sp,lineHeight=23.sp);Spacer(Modifier.height(22.dp))
@@ -886,7 +935,7 @@ private fun Modifier.blockMotionInput()=pointerInput(Unit) {
     }
 }
 
-@Composable private fun SettingsPage(onClose:()->Unit,onEdit:()->Unit,onRestored:()->Unit,embedded:Boolean=false,active:Boolean=true) {
+@Composable private fun SettingsPage(onClose:()->Unit,onEdit:()->Unit,onRestored:()->Unit,embedded:Boolean=false,active:Boolean=true,onReplay:()->Unit={}) {
     val context=LocalContext.current;val colors=MiuixTheme.colorScheme
     var notice by rememberSaveable { mutableStateOf("") }
     var pending by remember { mutableStateOf<String?>(null) }
@@ -904,6 +953,7 @@ private fun Modifier.blockMotionInput()=pointerInput(Unit) {
     Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize().background(colors.background).hazeSource(haze).imePadding().verticalScroll(scroll).safeDrawingPadding().padding(24.dp),verticalArrangement=Arrangement.spacedBy(16.dp)) {
         MotionText("设置",fontSize=32.sp,fontWeight=FontWeight.Bold,modifier=Modifier.padding(top=16.dp))
+        TextButton("重新引导",onReplay,Modifier.fillMaxWidth())
         MotionText("当前课表",fontSize=14.sp,color=colors.onSurfaceVariantSummary)
         Card(insideMargin=PaddingValues(20.dp),onClick=onEdit,modifier=Modifier.semantics { role=Role.Button;contentDescription="更改课表、校区和分组" }) {
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {Column(Modifier.weight(1f)) {MotionText("更改课表",fontSize=19.sp,fontWeight=FontWeight.SemiBold);MotionText(SchoolData.title()+" · "+SchoolData.CAMPUSES[SchoolData.campus],fontSize=13.sp,color=colors.onSurfaceVariantSummary,modifier=Modifier.padding(top=8.dp))};MotionText("›",fontSize=28.sp,color=colors.onSurfaceVariantSummary)}

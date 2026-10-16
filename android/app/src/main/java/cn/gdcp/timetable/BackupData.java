@@ -11,7 +11,7 @@ public final class BackupData {
   JSONObject projects=data.optJSONObject("teacherProjects");if(projects!=null)for(Iterator<String> it=projects.keys();it.hasNext();){Object v=projects.get(it.next());if(!(v instanceof String)||((String)v).length()>500)throw new IllegalArgumentException("体育项目无效");}
  }
  public static String exportData(Context c)throws JSONException {
-  SharedPreferences p=c.getSharedPreferences("school",Context.MODE_MULTI_PROCESS);
+  SharedPreferences p=c.getSharedPreferences("school",Context.MODE_PRIVATE);
   JSONObject settings=new JSONObject();settings.put("className",SchoolData.NAMES.get(SchoolData.selected));settings.put("campus",SchoolData.campus);
   JSONObject groups=new JSONObject(),custom=new JSONObject();
   for(String name:SchoolData.NAMES){String g=p.getString("groups:"+name,null),x=p.getString("custom:"+name,null);if(g!=null)groups.put(name,new JSONObject(g));if(x!=null)custom.put(name,new JSONArray(x));}
@@ -32,7 +32,7 @@ public final class BackupData {
  private static void known(String name,Set<String> names){if(!names.contains(name))throw new IllegalArgumentException("备份包含未识别的课表");}
  public static void restore(Context c,String text)throws JSONException {
   JSONObject root=validate(text),settings=root.getJSONObject("settings"),groups=root.getJSONObject("groups"),custom=root.getJSONObject("custom");
-  SharedPreferences p=c.getSharedPreferences("school",Context.MODE_MULTI_PROCESS);SharedPreferences.Editor edit=p.edit();
+  SharedPreferences p=c.getSharedPreferences("school",Context.MODE_PRIVATE);SharedPreferences.Editor edit=p.edit();
   for(String key:p.getAll().keySet())if(key.startsWith("groups:")||key.startsWith("custom:"))edit.remove(key);
   for(Iterator<String> it=groups.keys();it.hasNext();){String name=it.next();edit.putString("groups:"+name,groups.getJSONObject(name).toString());}
   for(Iterator<String> it=custom.keys();it.hasNext();){String name=it.next();edit.putString("custom:"+name,custom.getJSONArray(name).toString());}

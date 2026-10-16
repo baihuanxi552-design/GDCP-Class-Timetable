@@ -9,11 +9,13 @@
 - 在线使用：<https://baihuanxi552-design.github.io/GDCP-Class-Timetable/>
 - Android 下载：<https://github.com/baihuanxi552-design/GDCP-Class-Timetable/releases/latest>
 - 当前已发布版本：网页 3.3.2；Android 3.2.5
-- Android 源码版本：3.2.8，支持开启后每次打开应用立即检查、手动刷新；正式版需原签名覆盖安装；CI 另提供与正式版并行安装的验证版。
+- Android 源码版本：3.2.20，支持开启后每次打开应用立即检查、手动刷新；正式版需原签名覆盖安装；CI 另提供与正式版并行安装的验证版。
 
 ## 功能
 
 - 日课表、周课表、课程详情和桌面小部件
+- 小部件独立选择今天、明天或固定日期，长教室分行／轮播，按实际尺寸排列彩色课程卡片
+- 完整欢迎引导、按钮展开、设置完成页及重新引导
 - 本机自建课程以及 JSON 备份导入、导出
 - 通过学校官方教务页面导入个人课表
 - 深色模式、系统字体缩放和减少动态效果支持
@@ -37,7 +39,7 @@ python -m http.server 8000
 
 然后访问 <http://localhost:8000>。
 
-Android 构建需要 JDK 17 和 Android SDK 35：
+Android 构建与 Miuix 页面测试需要 JDK 21（应用字节码目标仍为 Java 17） 和 Android SDK 35：
 
 ```bash
 cd android

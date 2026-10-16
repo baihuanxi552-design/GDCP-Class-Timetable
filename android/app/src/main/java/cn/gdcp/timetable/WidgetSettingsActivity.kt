@@ -1,9 +1,10 @@
 package cn.gdcp.timetable
+
+import android.app.DatePickerDialog
 import android.appwidget.AppWidgetManager
 import android.content.Intent
 import android.os.Bundle
-import androidx.core.view.WindowCompat
-import android.os.Build
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -18,47 +19,46 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import top.yukonga.miuix.kmp.basic.*
-import top.yukonga.miuix.kmp.extra.SuperDropdown
-import top.yukonga.miuix.kmp.theme.*
+import java.time.LocalDate
+import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TextButton
+import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.theme.darkColorScheme
+import top.yukonga.miuix.kmp.theme.lightColorScheme
 
 class WidgetSettingsActivity : ComponentActivity() {
- private val keys=listOf("auto","classic","xiaomi","vivo","oppo","honor","huawei","flyme")
  override fun onCreate(savedInstanceState: Bundle?) {
   super.onCreate(savedInstanceState)
+  val id=intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID,AppWidgetManager.INVALID_APPWIDGET_ID)
   setResult(RESULT_CANCELED)
-  val id=intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID,-1)
-  if(BaseWidgetProvider.providerFor(this,id)==null){finish();return}
-  val manager=AppWidgetManager.getInstance(this)
-  val existing=manager.getAppWidgetOptions(id)
+  if(id==AppWidgetManager.INVALID_APPWIDGET_ID){finish();return}
+  val prefs=getSharedPreferences("widget_dates",MODE_PRIVATE)
   enableEdgeToEdge()
   setContent {
-   val dark=isSystemInDarkTheme()
-   SideEffect {
-    WindowCompat.getInsetsController(window,window.decorView).apply {isAppearanceLightNavigationBars=!dark;isAppearanceLightStatusBars=!dark}
-    if(Build.VERSION.SDK_INT>=29) window.isNavigationBarContrastEnforced=false
-    @Suppress("DEPRECATION")
-    if(Build.VERSION.SDK_INT<35) {window.statusBarColor=android.graphics.Color.TRANSPARENT;window.navigationBarColor=android.graphics.Color.TRANSPARENT}
-   }
-   MiuixTheme(colors=if(dark) darkColorScheme() else lightColorScheme()) {
-    var style by rememberSaveable { mutableIntStateOf(keys.indexOf(existing.getString("qingyuan_style","auto")).coerceAtLeast(0)) }
-    var day by rememberSaveable { mutableIntStateOf(if(existing.getInt("qingyuan_day",0)==1) 1 else 0) }
-    Column(Modifier.fillMaxSize().background(MiuixTheme.colorScheme.background).verticalScroll(rememberScrollState()).safeDrawingPadding().padding(20.dp),verticalArrangement=Arrangement.spacedBy(18.dp)) {
-     Text("小部件设置",fontSize=30.sp,fontWeight=FontWeight.Bold,modifier=Modifier.padding(top=20.dp))
-     Text("选择显示日期与视觉样式。品牌风格不会改变小部件的系统注册方式。",fontSize=14.sp,color=MiuixTheme.colorScheme.onSurfaceVariantSummary)
-     Card(Modifier.fillMaxWidth(),insideMargin=PaddingValues(0.dp)) {
-      SuperDropdown(title="视觉样式",items=listOf("跟随手机品牌","清远蓝白","小米简洁风格","vivo 圆润风格","OPPO / 一加 / realme","荣耀风格","华为风格（安卓）","魅族风格"),selectedIndex=style,onSelectedIndexChange={style=it})
-      SuperDropdown(title="显示日期",items=listOf("今天","明天"),selectedIndex=day,onSelectedIndexChange={day=it})
-     }
-     TextButton("保存并显示课表",{
-      if(BaseWidgetProvider.providerFor(this@WidgetSettingsActivity,id)!=null){
-       val options=Bundle();options.putString("qingyuan_style",keys[style]);options.putInt("qingyuan_day",day)
-       manager.updateAppWidgetOptions(id,options);BaseWidgetProvider.updateAll(this@WidgetSettingsActivity)
-       setResult(RESULT_OK,Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID,id))
-      }
-      finish()
-     },Modifier.fillMaxWidth(),colors=ButtonDefaults.textButtonColorsPrimary())
-     TextButton("取消",{finish()},Modifier.fillMaxWidth())
+   MiuixTheme(colors=if(isSystemInDarkTheme()) darkColorScheme() else lightColorScheme()) {
+    var mode by rememberSaveable { mutableIntStateOf(prefs.getInt("mode_"+id,0)) }
+    var fixed by rememberSaveable { mutableStateOf(prefs.getString("date_"+id,LocalDate.now(ScheduleData.ZONE).toString())!!) }
+    Column(Modifier.fillMaxSize().background(MiuixTheme.colorScheme.background).windowInsetsPadding(WindowInsets.safeDrawing).verticalScroll(rememberScrollState()).padding(24.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
+     Text("小部件设置",fontSize=30.sp,fontWeight=FontWeight.Bold,modifier=Modifier.padding(top=20.dp,bottom=12.dp))
+     Text("选择这个小部件显示哪天的课程。其他小部件不会随之改变。",modifier=Modifier.padding(bottom=12.dp))
+     TextButton(text=if(mode==0) "✓ 今天" else "今天",onClick={mode=0},modifier=Modifier.fillMaxWidth())
+     Text("跟随当前日期；当天课程全部结束后自动展示明天。",fontSize=13.sp)
+     TextButton(text=if(mode==1) "✓ 明天" else "明天",onClick={mode=1},modifier=Modifier.fillMaxWidth())
+     Text("每天自动展示下一天的课程。",fontSize=13.sp)
+     TextButton(text=if(mode==2) "✓ 指定日期 · $fixed" else "选择具体日期",onClick={
+      val chosen=LocalDate.parse(fixed)
+      DatePickerDialog(this@WidgetSettingsActivity,{_,year,month,day->fixed=LocalDate.of(year,month+1,day).toString();mode=2},chosen.year,chosen.monthValue-1,chosen.dayOfMonth).show()
+     },modifier=Modifier.fillMaxWidth())
+     Text("指定日期保持不变；无课或学期外会显示相应提示。",fontSize=13.sp)
+     Spacer(Modifier.height(12.dp))
+     TextButton(text="保存并更新小部件",onClick={
+      if(BaseWidgetProvider.providerFor(this@WidgetSettingsActivity,id)==null){Toast.makeText(this@WidgetSettingsActivity,"这个小部件已不存在，请重新添加",Toast.LENGTH_SHORT).show();finish()}
+      else if(BaseWidgetProvider.saveDate(this@WidgetSettingsActivity,id,mode,fixed)){
+       BaseWidgetProvider.updateAll(this@WidgetSettingsActivity)
+       setResult(RESULT_OK,Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID,id));finish()
+      }else Toast.makeText(this@WidgetSettingsActivity,"日期未保存，请重试",Toast.LENGTH_SHORT).show()
+     },modifier=Modifier.fillMaxWidth())
+     TextButton(text="取消",onClick={finish()},modifier=Modifier.fillMaxWidth())
     }
    }
   }

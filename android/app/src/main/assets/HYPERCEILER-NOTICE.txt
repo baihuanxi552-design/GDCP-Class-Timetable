@@ -1,0 +1,22 @@
+# 欢迎引导移植 Android 3.2.8
+
+从 HyperCeiler 移植 glow.glsl（逐字保留）、GlowPainter 的全部默认参数、GlowController 的时间轴及往返流光，Compose 改写生命周期与绘制。图标与标题分段缩放（0.5→0.95，440ms；0.95→1，700ms），按钮延迟 1340ms 后 450ms 淡入放大，欢迎布局采用原版 30/40/20 权重、90dp 图标和圆形箭头按钮。品牌图标与名称替换为个人课表，后续页面仍为应用已有校区与教务导入引导；未复制 Root、模块权限或 HyperCeiler 的设置功能。
+
+来源：ReChronoRain/HyperCeiler
+https://github.com/ReChronoRain/HyperCeiler
+参考提交：5e4686069dd7ab1f3697e256d5fc7d68fb73e317
+源路径：library/provision/src/main/res/raw/glow.glsl；renderengine/GlowPainter.java、GlowController.java；fragment/StartupFragment.java；utils/AnimHelper.java；res/layout/provision_startup_layout.xml。
+
+Copyright (C) 2023-2026 HyperCeiler Contributions。
+此次使用上游 AGPL-3.0 代码，安卓组合源码按 AGPL-3.0 提供，许可见 LICENSE、APK assets/AGPL-3.0.txt。第三方依赖保留各自许可。修改：用 Compose Canvas/RuntimeShader 替换上游 View/Folme，RESUMED 状态驱动帧时间，设备旋转与关闭动画的兼容、进入导入页面的圆形展开、应用品牌替换；原着色器不改。
+
+Android 13+ 使用原着色器，旧系统或着色器初始化失败使用兼容动态渐变，兼容方案不能完全复制原效果。小米私有 MiuiBlurUtils 的前景混色未直接调用，故图标与标题混色和原机型可能不同；不能声称像素级一致。原版 shader 已包含噪声、OKLab 混色、屏幕混合、环形变形与遮罩，不使用上一版近似 shader。
+
+welcomeAnimationSeenV3 在新版首次打开后记录；已有课程数据不变。系统关闭动画跳过涟漪，静态背景保留最终状态。构建、单元测试、Lint、签名、APK 内上游 shader 一致性和敏感信息检查为自动验证；RuntimeShader 设备编译、布局及转场观感待实机确认。
+
+本机源码包包含修改后的完整安卓工程、Gradle 构建文件和依赖许可；不包含签名私钥和用户课表。本次未向 GitHub 发布，APK 从本机交付。
+
+
+3.2.7：完成标记改为 guideCompleteV1，仅最后“设置完毕 → 开始使用”写入；未完成且应用停止后再次进入会重播，教务登录子页面不触发重播。原欢迎页按钮改为记录真实坐标、插值位置/宽高/圆角/背景色的容器展开，后半段预先展示下一页；过渡期间阻止点击。导入或跳过后展示流光完成页，品牌图标、标题、“设置完毕”和底部半透明开始按钮。点击开始后进入已有主界面，缓存、备份和小部件接口不改。此次仅本机编译，不发布 GitHub。
+
+3.2.8：重新实现欢迎页展开。点击冻结按钮 boundsInRoot 并换算根坐标；下一页始终按最终窗口尺寸排布，使用全屏固定图层上的 RoundRect 遮罩插值四边及圆角，避免前版小容器中的内容重新测量与偏移。箭头初段淡出，背景轻微缩小压暗，前景后段淡入，临近全屏时阴影退去，动画结束才切换引导步骤。实机视觉仍需验证。
